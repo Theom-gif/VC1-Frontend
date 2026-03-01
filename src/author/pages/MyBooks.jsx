@@ -109,7 +109,7 @@ const MyBooks = () => {
           <p className="text-slate-400 mt-1">Manage and track your published works and drafts.</p>
         </div>
         <button
-          onClick={() => navigate('/upload')}
+          onClick={() => navigate('/author/upload')}
           className="flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-xl font-bold shadow-glow hover:opacity-90 transition-all"
         >
           <Plus className="size-5" />
@@ -196,7 +196,7 @@ const MyBooks = () => {
             </div>
             <div className="p-5">
               <div className="flex justify-between items-start mb-1">
-                <h3 className="font-bold text-slate-100 truncate pr-2">{book.title}</h3>
+                <h3 className="font-bold text-[color:var(--text)] truncate pr-2">{book.title}</h3>
                 <div className="flex items-center gap-1">
                   <Star className="size-3 text-yellow-500 fill-yellow-500" />
                   <span className="text-xs font-bold">{book.rating || 'N/A'}</span>

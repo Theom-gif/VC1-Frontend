@@ -5,11 +5,21 @@ import { useAuth } from "../AuthContext";
 
 const ROLES = ["Reader", "Author", "Admin"];
 
+function getHomePathByRole(role) {
+  if (role === "Admin") {
+    return "/admin/dashboard";
+  }
+  if (role === "Author") {
+    return "/author";
+  }
+  return "/author";
+}
+
 export default function Login() {
-  const { isAuthenticated, login, loginDemo } = useAuth();
+  const { isAuthenticated, user, login, loginDemo } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/admin/dashboard";
+  const from = location.state?.from?.pathname;
 
   const [form, setForm] = useState({
     email: "",
@@ -20,7 +30,7 @@ export default function Login() {
   const [error, setError] = useState("");
 
   if (isAuthenticated) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to={getHomePathByRole(user?.role)} replace />;
   }
 
   const onChange = (key, value) => {
@@ -35,7 +45,7 @@ export default function Login() {
       setError(result.error);
       return;
     }
-    navigate(from, { replace: true });
+    navigate(from || getHomePathByRole(result.user?.role), { replace: true });
   };
 
   const loginAsDemo = (role) => {
@@ -44,7 +54,7 @@ export default function Login() {
       setError(result.error);
       return;
     }
-    navigate("/admin/dashboard", { replace: true });
+    navigate(getHomePathByRole(result.user?.role), { replace: true });
   };
 
   return (

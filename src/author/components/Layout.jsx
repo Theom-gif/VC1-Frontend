@@ -48,14 +48,6 @@ const Layout = () => {
               <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-background-dark"></span>
             </button>
             <div className="h-8 w-px bg-white/5 mx-2"></div>
-            <button className="flex items-center gap-2 p-1 pr-3 hover:bg-primary/20 rounded-full transition-colors">
-              <img 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0RzSHvwusKJJ8Uiy4xND7QQ2yipdArKFQnDJweU3WQEfiV8wKgjgMQMMKMQzGmhFoUMyTzP7rgAEHvXhz8Z_VAPF-PZzgIcOS18irbz_LadisSfRTbiWe_om5i0YbNT5ECtkLNqj5mfpNwATDHm5gJ5rI0XefWhIBqf6q9FklhYTezjW4hQyJBHuimt6X0_I5Xs2t8xYBY87IGSO2uFquxTxR_EY4_kB1CCGA_3xvqlNXpDXRoNsHHm6IFSjqc3WrkgnCqZG4zg" 
-                alt="User" 
-                className="size-8 rounded-full object-cover"
-              />
-              <span className="text-sm font-medium text-slate-300">Alex Rivera</span>
-            </button>
           </div>
         </header>
         

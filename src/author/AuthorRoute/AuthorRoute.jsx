@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import ProtectedRoute from '../../auth/ProtectedRoute';
 import Layout from '../components/Layout';
 import Dashboard from '../pages/Dashboard';
 import MyBooks from '../pages/MyBooks';
@@ -17,7 +18,14 @@ import EditBookPage from '../pages/EditBookPage';
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
+      <Route
+        path="/author"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<Dashboard />} />
         <Route path="my-books" element={<MyBooks />} />
         <Route path="upload" element={<UploadBook />} />

@@ -14,12 +14,18 @@ import Login from "../auth/pages/Login";
 import Register from "../auth/pages/Register";
 
 export default function AdminRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const homePath = isAuthenticated
+    ? user?.role === "Admin"
+      ? "/admin/dashboard"
+      : "/author"
+    : "/login";
 
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/" element={<Navigate to={homePath} replace />} />
 
       <Route
         path="/admin"
@@ -39,8 +45,6 @@ export default function AdminRoutes() {
         <Route path="monitor" element={<SystemMonitor />} />
         <Route path="settings" element={<Settings />} />
       </Route>
-      <Route path="/" element={<Navigate to={isAuthenticated ? "/admin/dashboard" : "/login"} replace />} />
-      <Route path="*" element={<Navigate to={isAuthenticated ? "/admin/dashboard" : "/login"} replace />} />
     </Routes>
   );
 }
