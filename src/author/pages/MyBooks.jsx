@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
+import {
   Search, 
   Filter, 
   Plus, 
@@ -10,17 +10,21 @@ import {
   Edit3,
   Star
 } from 'lucide-react';
+import { getBookCategories } from '../../shared/bookCategories';
 
 const initialBooks = [
-  { id: 1, title: "The Midnight Library", author: "Matt Haig", status: "Published", rating: 4.8, reads: "125k", sales: "$4,200", img: "https://picsum.photos/seed/book1/300/450" },
-  { id: 2, title: "Project Hail Mary", author: "Andy Weir", status: "Published", rating: 4.9, reads: "98k", sales: "$3,850", img: "https://picsum.photos/seed/book2/300/450" },
-  { id: 3, title: "Klara and the Sun", author: "Kazuo Ishiguro", status: "Draft", rating: 0, reads: "0", sales: "$0", img: "https://picsum.photos/seed/book3/300/450" },
-  { id: 4, title: "The Silent Patient", author: "Alex Michaelides", status: "Published", rating: 4.7, reads: "210k", sales: "$2,100", img: "https://picsum.photos/seed/book4/300/450" },
-  { id: 5, title: "Anxious People", author: "Fredrik Backman", status: "Published", rating: 4.6, reads: "85k", sales: "$1,800", img: "https://picsum.photos/seed/book5/300/450" },
-  { id: 6, title: "The Push", author: "Ashley Audrain", status: "Review", rating: 0, reads: "0", sales: "$0", img: "https://picsum.photos/seed/book6/300/450" },
+  { id: 1, title: "The Midnight Library", author: "Matt Haig", category: "Novel", status: "Published", rating: 4.8, reads: "125k", sales: "$4,200", img: "https://picsum.photos/seed/book1/300/450" },
+  { id: 2, title: "Project Hail Mary", author: "Andy Weir", category: "Technology", status: "Published", rating: 4.9, reads: "98k", sales: "$3,850", img: "https://picsum.photos/seed/book2/300/450" },
+  { id: 3, title: "Klara and the Sun", author: "Kazuo Ishiguro", category: "Novel", status: "Draft", rating: 0, reads: "0", sales: "$0", img: "https://picsum.photos/seed/book3/300/450" },
+  { id: 4, title: "The Silent Patient", author: "Alex Michaelides", category: "Novel", status: "Published", rating: 4.7, reads: "210k", sales: "$2,100", img: "https://picsum.photos/seed/book4/300/450" },
+  { id: 5, title: "Anxious People", author: "Fredrik Backman", category: "Novel", status: "Published", rating: 4.6, reads: "85k", sales: "$1,800", img: "https://picsum.photos/seed/book5/300/450" },
+  { id: 6, title: "The Push", author: "Ashley Audrain", category: "Novel", status: "Review", rating: 0, reads: "0", sales: "$0", img: "https://picsum.photos/seed/book6/300/450" },
 ];
 
 const BOOKS_STORAGE_KEY = 'author_studio_books';
+const BOOK_CATEGORIES = getBookCategories();
+const FALLBACK_CATEGORY = BOOK_CATEGORIES[0] || 'Technology';
+const isKnownCategory = (category) => BOOK_CATEGORIES.includes(category);
 
 const MyBooks = () => {
   const MotionDiv = motion.div;
@@ -32,7 +36,14 @@ const MyBooks = () => {
 
     try {
       const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : initialBooks;
+      if (!Array.isArray(parsed)) {
+        return initialBooks;
+      }
+
+      return parsed.map((book) => ({
+        ...book,
+        category: isKnownCategory(book.category) ? book.category : FALLBACK_CATEGORY,
+      }));
     } catch {
       return initialBooks;
     }
@@ -53,10 +64,11 @@ const MyBooks = () => {
           title: state.newBook.title,
           author: state.newBook.author,
           status: state.newBook.status,
+          category: state.newBook.category || FALLBACK_CATEGORY,
           rating: state.newBook.rating,
           reads: state.newBook.reads,
           sales: state.newBook.sales,
-          img: state.newBook.coverUrl,
+          img: state.newBook.coverUrl || state.newBook.img,
         },
         ...prev,
       ]);
@@ -72,6 +84,7 @@ const MyBooks = () => {
                 ...book,
                 title: state.updatedBook.title,
                 status: state.updatedBook.status,
+                category: state.updatedBook.category || book.category,
                 img: state.updatedBook.coverUrl || book.img,
               }
             : book,
@@ -97,7 +110,7 @@ const MyBooks = () => {
     sales: book.sales,
     coverUrl: book.img,
     description: `${book.title} by ${book.author}.`,
-    category: 'Fantasy & Mystery',
+    category: book.category || FALLBACK_CATEGORY,
     tags: ['fiction', book.status.toLowerCase()],
   });
 

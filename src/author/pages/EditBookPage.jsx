@@ -1,6 +1,9 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import EditBookForm from './EditBookForm';
+import { getBookCategories } from '../../shared/bookCategories';
+
+const FALLBACK_CATEGORY = getBookCategories()[0] || 'Technology';
 
 const fallbackBook = {
   id: 0,
@@ -12,7 +15,7 @@ const fallbackBook = {
   sales: '$0',
   coverUrl: 'https://picsum.photos/seed/fallback-edit-cover/400/600',
   description: 'Add your book description here.',
-  category: 'Fantasy & Mystery',
+  category: FALLBACK_CATEGORY,
   tags: ['new', 'draft'],
 };
 

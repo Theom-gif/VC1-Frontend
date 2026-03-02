@@ -21,8 +21,9 @@ import AuthorProfile from "../author/pages/Profile";
 import AuthorSettings from "../author/pages/Setting";
 import AuthorFeedback from "../author/pages/Feedback";
 import AuthorEditBook from "../author/pages/EditBookPage";
-import ReaderDashboard from "../reader/pages/Dashboard";
-
+function ReaderDashboard() {
+  return <Navigate to="/login" replace />;
+}
 export default function AdminRoutes() {
   const { isAuthenticated, isInitializing, user } = useAuth();
 

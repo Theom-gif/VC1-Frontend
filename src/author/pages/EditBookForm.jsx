@@ -1,10 +1,26 @@
 import React from 'react';
 import { ChevronRight, CloudUpload, X, Plus } from 'lucide-react';
+import {
+  getBookCategories,
+  isValidBookCategory,
+} from '../../shared/bookCategories';
 
 export const EditBookForm = ({ book, onSave, onCancel, onDelete }) => {
   const [formData, setFormData] = React.useState(book);
   const [newTag, setNewTag] = React.useState('');
+  const categories = React.useMemo(() => getBookCategories(), []);
   const coverInputRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (isValidBookCategory(formData.category, categories)) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      category: categories[0] || '',
+    }));
+  }, [categories, formData.category]);
 
   const handleStatusChange = (status) => {
     setFormData(prev => ({ ...prev, status }));
@@ -69,7 +85,16 @@ export const EditBookForm = ({ book, onSave, onCancel, onDelete }) => {
         </p>
       </div>
 
-      <form className="space-y-8" onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
+      <form
+        className="space-y-8"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!isValidBookCategory(formData.category, categories)) {
+            return;
+          }
+          onSave(formData);
+        }}
+      >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
           <div className="md:col-span-1">
             <p className="text-base font-semibold app-text-primary mb-1">Book Cover</p>
@@ -133,12 +158,13 @@ export const EditBookForm = ({ book, onSave, onCancel, onDelete }) => {
               className="w-full rounded-lg border border-slate-600/60 bg-slate-900/40 p-3 focus:border-primary focus:ring-1 focus:ring-primary text-slate-100 outline-none transition-all"
               value={formData.category}
               onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              required
             >
-              <option value="Fantasy & Mystery">Fantasy & Mystery</option>
-              <option value="Sci-Fi">Science Fiction</option>
-              <option value="Horror">Horror</option>
-              <option value="Romance">Romance</option>
-              <option value="Non-fiction">Non-fiction</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
             </select>
           </div>
           <div>

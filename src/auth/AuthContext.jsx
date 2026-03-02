@@ -115,7 +115,40 @@ export function AuthProvider({ children }) {
       user,
       isInitializing,
       isAuthenticated: Boolean(user),
-      login: ({ email, password, role }) => {
+      login: async ({ email, password, role }) => {
+        // Try remote authentication first
+        try {
+          const resp = await fetch("http://192.168.75.1:8000/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password, role }),
+          });
+
+          if (resp.ok) {
+            const data = await resp.json();
+            // Expecting either { user, token } or user object
+            const remoteUser = data.user || data;
+            const token = data.token || data.accessToken || null;
+            if (remoteUser && (remoteUser.email || remoteUser.id)) {
+              const sessionUser = {
+                id: remoteUser.id || remoteUser._id || String(remoteUser.email),
+                name: remoteUser.name || remoteUser.email,
+                email: remoteUser.email,
+                role: remoteUser.role || role,
+              };
+              if (token) sessionUser.token = token;
+              saveSession(sessionUser);
+              setUser(sessionUser);
+              return { ok: true, user: sessionUser };
+            }
+
+            return { ok: false, error: data.error || data.message || "Invalid credentials." };
+          }
+        } catch (err) {
+          // network or CORS error - fall back to local demo auth below
+        }
+
+        // Fallback to local demo user store
         const normalizedEmail = String(email || "").trim().toLowerCase();
         const users = getUsers();
         const found = users.find(

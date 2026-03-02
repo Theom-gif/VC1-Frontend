@@ -33,11 +33,12 @@ export default function Login() {
     setError("");
   };
 
-  const onSubmit = (event) => {
+  const onSubmit = async (event) => {
     event.preventDefault();
-    const result = login(form);
+    setError("");
+    const result = await login(form);
     if (!result.ok) {
-      setError(result.error);
+      setError(result.error || "Login failed");
       return;
     }
     navigate(from || getRoleLandingPath(result.user?.role), { replace: true });

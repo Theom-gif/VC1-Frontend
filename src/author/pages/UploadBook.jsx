@@ -11,6 +11,10 @@ import {
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
+import {
+  getBookCategories,
+  isValidBookCategory,
+} from '../../shared/bookCategories';
 
 const BOOKS_STORAGE_KEY = 'author_studio_books';
 
@@ -23,7 +27,8 @@ const UploadBook = () => {
   const [step, setStep] = useState(1);
   const [dragActive, setDragActive] = useState(false);
   const [title, setTitle] = useState('');
-  const [genre, setGenre] = useState('');
+  const categories = getBookCategories();
+  const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState('');
@@ -61,7 +66,11 @@ const UploadBook = () => {
   };
 
   const canContinue =
-    (step === 1 && title.trim() && genre && description.trim() && coverFile) ||
+    (step === 1 &&
+      title.trim() &&
+      isValidBookCategory(category, categories) &&
+      description.trim() &&
+      coverFile) ||
     (step === 2 && manuscriptFile) ||
     step === 3;
 
@@ -75,6 +84,7 @@ const UploadBook = () => {
       id: Date.now(),
       title: title.trim(),
       author: 'Alex Rivera',
+      category,
       status: 'Published',
       rating: 0,
       reads: '0',
@@ -142,18 +152,18 @@ const UploadBook = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Genre</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Category</label>
                   <select
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
                     className="w-full bg-primary/10 border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
                   >
-                    <option value="">Select a genre</option>
-                    <option>Fantasy</option>
-                    <option>Sci-Fi</option>
-                    <option>Mystery</option>
-                    <option>Romance</option>
-                    <option>Thriller</option>
+                    <option value="">Select a category</option>
+                    {categories.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -265,7 +275,9 @@ const UploadBook = () => {
                   <FileText className="size-5 text-accent" />
                   <div>
                     <p className="text-sm font-medium">{manuscriptFile?.name ?? 'No manuscript selected'}</p>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold">{manuscriptFile ? `${manuscriptSize} • Ready to process` : 'Upload a file to continue'}</p>
+                    <p className="text-[10px] text-slate-500 uppercase font-bold">
+                      {manuscriptFile ? `${manuscriptSize} - Ready to process` : 'Upload a file to continue'}
+                    </p>
                   </div>
                 </div>
                 <button onClick={() => setManuscriptFile(null)} className="p-2 text-slate-500 hover:text-rose-500 transition-colors">
@@ -285,7 +297,7 @@ const UploadBook = () => {
               <div className="flex-1 space-y-6">
                 <div>
                   <h2 className="text-2xl font-bold">{title || 'Untitled Book'}</h2>
-                  <p className="text-slate-400">{genre || 'Unknown Genre'} • {manuscriptSize}</p>
+                  <p className="text-slate-400">{category || 'Unknown Category'} - {manuscriptSize}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Summary</p>

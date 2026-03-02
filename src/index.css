@@ -33,6 +33,19 @@
   @apply text-white bg-accent-purple/10 border-l-4 border-accent-purple;
 }
 
+.admin-shell {
+  background:
+    radial-gradient(1200px 700px at 82% -10%, rgba(34, 197, 94, 0.08), transparent 62%),
+    radial-gradient(900px 520px at 75% 110%, rgba(56, 189, 248, 0.08), transparent 68%),
+    linear-gradient(180deg, #0b1218 0%, #091017 55%, #081018 100%);
+  background-attachment: fixed;
+}
+
+.admin-main {
+  background:
+    linear-gradient(180deg, rgba(7, 20, 28, 0.72) 0%, rgba(7, 17, 24, 0.9) 100%);
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
