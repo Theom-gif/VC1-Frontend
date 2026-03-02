@@ -26,6 +26,7 @@ function ReaderDashboard() {
 }
 export default function AdminRoutes() {
   const { isAuthenticated, isInitializing, user } = useAuth();
+  const homePath = isAuthenticated ? getRoleLandingPath(user?.role) : "/login";
 
   if (isInitializing) {
     return null;
