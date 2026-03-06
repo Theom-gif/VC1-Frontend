@@ -166,8 +166,16 @@ export default function Register() {
                   onChange={(e) => onChange("password", e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#1d3438] px-4 py-3 text-[#f8fafc] outline-none focus:border-[#4a868f]"
+                  className="w-full rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#1d3438] px-4 py-3 pr-12 text-[#f8fafc] outline-none focus:border-[#4a868f]"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#f8fafc]"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             <div>
@@ -179,8 +187,16 @@ export default function Register() {
                   onChange={(e) => onChange("password_confirmation", e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#1d3438] px-4 py-3 text-[#f8fafc] outline-none focus:border-[#4a868f]"
+                  className="w-full rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#1d3438] px-4 py-3 pr-12 text-[#f8fafc] outline-none focus:border-[#4a868f]"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#f8fafc]"
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
           </div>
