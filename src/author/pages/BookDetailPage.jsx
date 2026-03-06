@@ -54,6 +54,23 @@ const BookDetailPage = () => {
   }, [book.key, book.source]);
 
   React.useEffect(() => {
+    const manuscriptUrl = String(book.manuscriptUrl || '').trim();
+    if (manuscriptUrl) {
+      setLoadingPdf(true);
+      setPdfError('');
+      setPdfUrl('');
+      const isPdfUrl = /\.pdf(\?|$)/i.test(manuscriptUrl);
+      if (!isPdfUrl) {
+        setPdfError('Uploaded manuscript is not a PDF. Preview is available for PDF only.');
+        setLoadingPdf(false);
+        return undefined;
+      }
+
+      setPdfUrl(manuscriptUrl);
+      setLoadingPdf(false);
+      return undefined;
+    }
+
     if (book.source !== 'local' || !book.id) return undefined;
 
     let objectUrl = '';
@@ -92,7 +109,7 @@ const BookDetailPage = () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       setPdfUrl('');
     };
-  }, [book.id, book.source]);
+  }, [book.id, book.manuscriptUrl, book.source]);
 
   const effectiveDescription =
     workDetails?.description ||
@@ -175,7 +192,7 @@ const BookDetailPage = () => {
         </div>
       </div>
 
-      {book.source === 'local' && (
+      {(book.source === 'local' || book.source === 'database') && (
         <div className="mt-8 bg-card-dark rounded-2xl border border-white/5 p-6">
           <h2 className="text-sm uppercase tracking-wider text-slate-400 font-bold mb-3">PDF Reader</h2>
           {loadingPdf && <p className="text-sm text-slate-400">Loading PDF...</p>}

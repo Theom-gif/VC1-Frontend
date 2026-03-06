@@ -1,8 +1,11 @@
 import React from 'react';
 import { ChevronRight, CloudUpload, X, Plus } from 'lucide-react';
 
-export const EditBookForm = ({ book, onSave, onCancel, onDelete }) => {
-  const [formData, setFormData] = React.useState(book);
+export const EditBookForm = ({ book, onSave, onCancel, onDelete, isSaving = false, isDeleting = false, errorMessage = '' }) => {
+  const [formData, setFormData] = React.useState({
+    ...book,
+    tags: Array.isArray(book?.tags) ? book.tags : [],
+  });
   const [newTag, setNewTag] = React.useState('');
   const coverInputRef = React.useRef(null);
 
@@ -50,7 +53,7 @@ export const EditBookForm = ({ book, onSave, onCancel, onDelete }) => {
     }
 
     const objectUrl = URL.createObjectURL(file);
-    setFormData((prev) => ({ ...prev, coverUrl: objectUrl }));
+    setFormData((prev) => ({ ...prev, coverUrl: objectUrl, coverFile: file }));
     event.target.value = '';
   };
 
@@ -69,7 +72,13 @@ export const EditBookForm = ({ book, onSave, onCancel, onDelete }) => {
         </p>
       </div>
 
-      <form className="space-y-8" onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
+      <form
+        className="space-y-8"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave(formData);
+        }}
+      >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
           <div className="md:col-span-1">
             <p className="text-base font-semibold app-text-primary mb-1">Book Cover</p>
@@ -203,12 +212,12 @@ export const EditBookForm = ({ book, onSave, onCancel, onDelete }) => {
           <button
             type="button"
             onClick={onDelete}
-            disabled={!onDelete}
+            disabled={!onDelete || isDeleting || isSaving}
             className={`px-6 py-2.5 rounded-lg font-bold transition-colors ${
-              onDelete ? 'text-rose-500 hover:bg-rose-500/10' : 'text-slate-400 cursor-not-allowed'
+              onDelete && !isDeleting && !isSaving ? 'text-rose-500 hover:bg-rose-500/10' : 'text-slate-400 cursor-not-allowed'
             }`}
           >
-            Delete Book
+            {isDeleting ? 'Deleting...' : 'Delete Book'}
           </button>
           <div className="flex items-center gap-4">
           <button 
@@ -220,12 +229,20 @@ export const EditBookForm = ({ book, onSave, onCancel, onDelete }) => {
           </button>
           <button 
             type="submit"
-            className="px-8 py-2.5 rounded-lg bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
+            disabled={isSaving || isDeleting}
+            className={`px-8 py-2.5 rounded-lg font-bold shadow-lg transition-all ${
+              isSaving || isDeleting
+                ? 'bg-slate-700 text-slate-400 cursor-not-allowed shadow-none'
+                : 'bg-primary text-on-primary shadow-primary/20 hover:brightness-110'
+            }`}
           >
-            Save Book
+            {isSaving ? 'Saving...' : 'Save Book'}
           </button>
           </div>
         </div>
+        {errorMessage && (
+          <p className="text-sm text-rose-400">{errorMessage}</p>
+        )}
       </form>
     </div>
   );

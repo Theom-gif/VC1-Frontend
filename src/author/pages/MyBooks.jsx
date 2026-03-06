@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Search, 
+import {
+  Search,
   Filter, 
   Plus, 
   MoreVertical, 
@@ -12,17 +12,18 @@ import {
 } from 'lucide-react';
 import { searchBooks } from '../services/openLibraryService';
 import { deleteManuscriptFile } from '../services/manuscriptStorage';
-
-const initialBooks = [
-  { id: 1, title: "The Midnight Library", author: "Matt Haig", status: "Published", rating: 4.8, reads: "125k", sales: "$4,200", img: "https://picsum.photos/seed/book1/300/450" },
-  { id: 2, title: "Project Hail Mary", author: "Andy Weir", status: "Published", rating: 4.9, reads: "98k", sales: "$3,850", img: "https://picsum.photos/seed/book2/300/450" },
-  { id: 3, title: "Klara and the Sun", author: "Kazuo Ishiguro", status: "Draft", rating: 0, reads: "0", sales: "$0", img: "https://picsum.photos/seed/book3/300/450" },
-  { id: 4, title: "The Silent Patient", author: "Alex Michaelides", status: "Published", rating: 4.7, reads: "210k", sales: "$2,100", img: "https://picsum.photos/seed/book4/300/450" },
-  { id: 5, title: "Anxious People", author: "Fredrik Backman", status: "Published", rating: 4.6, reads: "85k", sales: "$1,800", img: "https://picsum.photos/seed/book5/300/450" },
-  { id: 6, title: "The Push", author: "Ashley Audrain", status: "Review", rating: 0, reads: "0", sales: "$0", img: "https://picsum.photos/seed/book6/300/450" },
-];
+import { getBooksRequest, importLocalBooksRequest } from '../services/bookService';
 
 const BOOKS_STORAGE_KEY = 'author_studio_books';
+const DEFAULT_COVER = 'https://picsum.photos/seed/new-book/300/450';
+
+const mapLocalBookForImport = (book) => ({
+  title: book?.title || 'Untitled',
+  author: book?.author || '',
+  description: book?.description || '',
+  category: book?.genre || '',
+  cover_image_url: book?.img || '',
+});
 
 const MyBooks = () => {
   const MotionDiv = motion.div;
@@ -32,67 +33,63 @@ const MyBooks = () => {
   const [apiBooks, setApiBooks] = React.useState([]);
   const [apiLoading, setApiLoading] = React.useState(false);
   const [apiError, setApiError] = React.useState('');
-  const [books, setBooks] = React.useState(() => {
-    const saved = window.localStorage.getItem(BOOKS_STORAGE_KEY);
-    if (!saved) return initialBooks;
+  const [books, setBooks] = React.useState([]);
+  const [booksLoading, setBooksLoading] = React.useState(false);
+  const [booksError, setBooksError] = React.useState('');
 
+  const loadBooks = React.useCallback(async () => {
+    setBooksLoading(true);
+    setBooksError('');
     try {
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : initialBooks;
+      let dbBooks = await getBooksRequest();
+
+      if (dbBooks.length === 0) {
+        const saved = window.localStorage.getItem(BOOKS_STORAGE_KEY);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            const localBooks = Array.isArray(parsed) ? parsed : [];
+            if (localBooks.length > 0) {
+              await importLocalBooksRequest(localBooks.map(mapLocalBookForImport));
+              window.localStorage.removeItem(BOOKS_STORAGE_KEY);
+              dbBooks = await getBooksRequest();
+            }
+          } catch {
+            // Keep page loading from database only.
+          }
+        }
+      }
+
+      setBooks(dbBooks);
     } catch {
-      return initialBooks;
+      setBooksError('Unable to load books from database.');
+      setBooks([]);
+    } finally {
+      setBooksLoading(false);
     }
-  });
+  }, []);
 
   React.useEffect(() => {
-    window.localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify(books));
-  }, [books]);
+    loadBooks();
+  }, [loadBooks]);
 
   React.useEffect(() => {
     const state = location.state || null;
     if (!state) return;
 
-    if (state.newBook) {
-      setBooks((prev) => [
-        {
-          id: state.newBook.id,
-          title: state.newBook.title,
-          author: state.newBook.author,
-          status: state.newBook.status,
-          rating: state.newBook.rating,
-          reads: state.newBook.reads,
-          sales: state.newBook.sales,
-          img: state.newBook.coverUrl,
-        },
-        ...prev,
-      ]);
-      navigate(location.pathname, { replace: true, state: null });
-      return;
-    }
-
-    if (state.updatedBook) {
-      setBooks((prev) =>
-        prev.map((book) =>
-          book.id === state.updatedBook.id
-            ? {
-                ...book,
-                title: state.updatedBook.title,
-                status: state.updatedBook.status,
-                img: state.updatedBook.coverUrl || book.img,
-              }
-            : book,
-        ),
-      );
+    if (state.refresh) {
+      loadBooks();
       navigate(location.pathname, { replace: true, state: null });
       return;
     }
 
     if (typeof state.deletedBookId === 'number') {
-      setBooks((prev) => prev.filter((book) => book.id !== state.deletedBookId));
       deleteManuscriptFile(state.deletedBookId).catch(() => {});
-      navigate(location.pathname, { replace: true, state: null });
     }
-  }, [location.pathname, location.state, navigate]);
+
+    loadBooks();
+    navigate(location.pathname, { replace: true, state: null });
+  }, [loadBooks, location.pathname, location.state, navigate]);
 
   React.useEffect(() => {
     const query = searchQuery.trim();
@@ -152,7 +149,7 @@ const MyBooks = () => {
   });
 
   const toDetailBook = (book) => ({
-    id: book.id,
+    id: book.bookId || book.id,
     key: '',
     title: book.title,
     author: book.author,
@@ -166,7 +163,8 @@ const MyBooks = () => {
     manuscriptName: book.manuscriptName || '',
     manuscriptType: book.manuscriptType || '',
     manuscriptSizeBytes: book.manuscriptSizeBytes || 0,
-    source: 'local',
+    manuscriptUrl: book.manuscriptUrl || '',
+    source: book.source || 'database',
   });
 
   const toApiDetailBook = (book) => ({
@@ -223,6 +221,12 @@ const MyBooks = () => {
         </div>
       </div>
 
+      {booksError && <p className="text-sm text-rose-400 mb-4">{booksError}</p>}
+      {booksLoading && <p className="text-sm text-slate-400 mb-4">Loading books from database...</p>}
+      {!booksLoading && filteredLocalBooks.length === 0 && (
+        <p className="text-sm text-slate-400 mb-8">No books in database yet. Upload one to get started.</p>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {filteredLocalBooks.map((book, i) => (
           <MotionDiv 
@@ -234,7 +238,7 @@ const MyBooks = () => {
           >
             <div className="relative aspect-[2/3] overflow-hidden">
               <img 
-                src={book.img} 
+                src={book.img || DEFAULT_COVER}
                 alt={book.title} 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />

@@ -12,9 +12,8 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { searchAuthors, searchBooks } from '../services/openLibraryService';
-import { saveManuscriptFile } from '../services/manuscriptStorage';
+import { uploadBookRequest } from '../services/bookService';
 
-const BOOKS_STORAGE_KEY = 'author_studio_books';
 const PROFILE_STORAGE_KEY = 'author_studio_profile';
 const GENRE_OPTIONS = ['Fantasy', 'Sci-Fi', 'Mystery', 'Romance', 'Thriller'];
 
@@ -53,6 +52,8 @@ const UploadBook = () => {
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState('');
   const [manuscriptFile, setManuscriptFile] = useState(null);
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const defaultAuthor = 'Alex Rivera';
@@ -174,50 +175,67 @@ const UploadBook = () => {
     (step === 2 && manuscriptFile) ||
     step === 3;
 
+  const getStepValidationError = () => {
+    if (step === 1) {
+      if (!title.trim()) return 'Please enter a book title.';
+      if (!authorQuery.trim()) return 'Please enter an author name.';
+      if (!genre) return 'Please select a genre.';
+      if (!description.trim()) return 'Please enter a description.';
+      if (!coverFile && !coverPreviewUrl) return 'Please upload a cover image.';
+    }
+
+    if (step === 2 && !manuscriptFile) {
+      return 'Please upload a manuscript file before continuing.';
+    }
+
+    return '';
+  };
+
   const handleContinue = async () => {
-    if (!canContinue) return;
+    const validationError = getStepValidationError();
+    if (validationError) {
+      setSubmitError(validationError);
+      return;
+    }
+
     if (step < 3) {
+      setSubmitError('');
       setStep((prev) => prev + 1);
       return;
     }
 
-    const bookId = Date.now();
-    const newBook = {
-      id: bookId,
-      title: title.trim(),
-      author: selectedAuthor?.name || authorQuery.trim(),
-      genre: genre.trim(),
-      description: description.trim(),
-      status: 'Published',
-      rating: 0,
-      reads: '0',
-      sales: '$0',
-      img: coverPreviewUrl || 'https://picsum.photos/seed/new-book/300/450',
-      manuscriptName: manuscriptFile?.name || '',
-      manuscriptType: manuscriptFile?.type || '',
-      manuscriptSizeBytes: manuscriptFile?.size || 0,
-    };
+    setSubmitError('');
+    setIsSubmitting(true);
+    try {
+      const payload = new FormData();
+      payload.append('title', title.trim());
+      payload.append('author', selectedAuthor?.name || authorQuery.trim());
+      payload.append('category', genre.trim());
+      payload.append('description', description.trim());
 
-    const existingRaw = window.localStorage.getItem(BOOKS_STORAGE_KEY);
-    let existingBooks = [];
-    if (existingRaw) {
-      try {
-        const parsed = JSON.parse(existingRaw);
-        existingBooks = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        existingBooks = [];
+      if (manuscriptFile instanceof File) {
+        payload.append('book_file', manuscriptFile);
       }
-    }
 
-    window.localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify([newBook, ...existingBooks]));
-    if (manuscriptFile) {
-      try {
-        await saveManuscriptFile(bookId, manuscriptFile);
-      } catch {
-        // Keep publish flow successful even if local file cache fails.
+      if (coverFile instanceof File) {
+        payload.append('cover_image', coverFile);
+      } else if (coverPreviewUrl) {
+        payload.append('cover_image_url', coverPreviewUrl);
       }
+
+      await uploadBookRequest(payload);
+      navigate('/author/my-books');
+    } catch (error) {
+      const apiMessage =
+        error?.response?.data?.errors ||
+        error?.response?.data?.message ||
+        'Unable to upload book. Please try again.';
+      setSubmitError(
+        typeof apiMessage === 'string' ? apiMessage : 'Unable to upload book. Please check your input.',
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-    navigate('/author/my-books');
   };
 
   const manuscriptSize = manuscriptFile
@@ -558,15 +576,20 @@ const UploadBook = () => {
 
           <button
             onClick={handleContinue}
-            disabled={!canContinue}
+            disabled={isSubmitting}
             className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              canContinue ? 'bg-accent text-white shadow-glow hover:opacity-90' : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+              !isSubmitting && canContinue
+                ? 'bg-accent text-white shadow-glow hover:opacity-90'
+                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
             }`}
           >
-            <span>{step === 3 ? 'Publish Book' : 'Continue'}</span>
+            <span>{isSubmitting ? 'Publishing...' : step === 3 ? 'Publish Book' : 'Continue'}</span>
             {step < 3 && <ChevronRight className="size-4" />}
           </button>
         </div>
+        {submitError && (
+          <p className="mt-4 text-sm text-rose-400">{submitError}</p>
+        )}
       </div>
     </div>
   );
