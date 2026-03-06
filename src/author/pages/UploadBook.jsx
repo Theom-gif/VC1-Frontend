@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,8 +11,22 @@ import {
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
+import { searchAuthors, searchBooks } from '../services/openLibraryService';
+import { saveManuscriptFile } from '../services/manuscriptStorage';
 
 const BOOKS_STORAGE_KEY = 'author_studio_books';
+const PROFILE_STORAGE_KEY = 'author_studio_profile';
+const GENRE_OPTIONS = ['Fantasy', 'Sci-Fi', 'Mystery', 'Romance', 'Thriller'];
+
+const mapOpenLibrarySubjectToGenre = (subject = '') => {
+  const normalized = subject.toLowerCase();
+  if (normalized.includes('science') || normalized.includes('sci-fi')) return 'Sci-Fi';
+  if (normalized.includes('fantasy')) return 'Fantasy';
+  if (normalized.includes('mystery') || normalized.includes('crime')) return 'Mystery';
+  if (normalized.includes('romance') || normalized.includes('love')) return 'Romance';
+  if (normalized.includes('thriller') || normalized.includes('suspense')) return 'Thriller';
+  return '';
+};
 
 const UploadBook = () => {
   const MotionDiv = motion.div;
@@ -23,11 +37,106 @@ const UploadBook = () => {
   const [step, setStep] = useState(1);
   const [dragActive, setDragActive] = useState(false);
   const [title, setTitle] = useState('');
+  const [bookQuery, setBookQuery] = useState('');
+  const [bookResults, setBookResults] = useState([]);
+  const [isLoadingBooks, setIsLoadingBooks] = useState(false);
+  const [bookError, setBookError] = useState('');
+  const [showBookResults, setShowBookResults] = useState(false);
+  const [authorQuery, setAuthorQuery] = useState('');
+  const [selectedAuthor, setSelectedAuthor] = useState(null);
+  const [authorResults, setAuthorResults] = useState([]);
+  const [isLoadingAuthors, setIsLoadingAuthors] = useState(false);
+  const [authorError, setAuthorError] = useState('');
+  const [showAuthorResults, setShowAuthorResults] = useState(false);
   const [genre, setGenre] = useState('');
   const [description, setDescription] = useState('');
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState('');
   const [manuscriptFile, setManuscriptFile] = useState(null);
+
+  useEffect(() => {
+    const defaultAuthor = 'Alex Rivera';
+    const profileRaw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (!profileRaw) {
+      setAuthorQuery(defaultAuthor);
+      return;
+    }
+
+    try {
+      const profile = JSON.parse(profileRaw);
+      setAuthorQuery(profile?.fullName?.trim() || defaultAuthor);
+    } catch {
+      setAuthorQuery(defaultAuthor);
+    }
+  }, []);
+
+  useEffect(() => {
+    const query = bookQuery.trim();
+    if (!query || title.trim() === query) {
+      setBookResults([]);
+      setBookError('');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timerId = window.setTimeout(async () => {
+      setIsLoadingBooks(true);
+      setBookError('');
+      try {
+        const results = await searchBooks(query, {
+          limit: 6,
+          signal: controller.signal,
+        });
+        setBookResults(results);
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          setBookError('Unable to load books from Open Library.');
+          setBookResults([]);
+        }
+      } finally {
+        setIsLoadingBooks(false);
+      }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timerId);
+    };
+  }, [bookQuery, title]);
+
+  useEffect(() => {
+    const query = authorQuery.trim();
+    if (!query || selectedAuthor?.name === query) {
+      setAuthorResults([]);
+      setAuthorError('');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timerId = window.setTimeout(async () => {
+      setIsLoadingAuthors(true);
+      setAuthorError('');
+      try {
+        const results = await searchAuthors(query, {
+          limit: 6,
+          signal: controller.signal,
+        });
+        setAuthorResults(results);
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          setAuthorError('Unable to load authors from Open Library.');
+          setAuthorResults([]);
+        }
+      } finally {
+        setIsLoadingAuthors(false);
+      }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timerId);
+    };
+  }, [authorQuery, selectedAuthor]);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -61,25 +170,32 @@ const UploadBook = () => {
   };
 
   const canContinue =
-    (step === 1 && title.trim() && genre && description.trim() && coverFile) ||
+    (step === 1 && title.trim() && authorQuery.trim() && genre && description.trim() && (coverFile || coverPreviewUrl)) ||
     (step === 2 && manuscriptFile) ||
     step === 3;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!canContinue) return;
     if (step < 3) {
       setStep((prev) => prev + 1);
       return;
     }
+
+    const bookId = Date.now();
     const newBook = {
-      id: Date.now(),
+      id: bookId,
       title: title.trim(),
-      author: 'Alex Rivera',
+      author: selectedAuthor?.name || authorQuery.trim(),
+      genre: genre.trim(),
+      description: description.trim(),
       status: 'Published',
       rating: 0,
       reads: '0',
       sales: '$0',
       img: coverPreviewUrl || 'https://picsum.photos/seed/new-book/300/450',
+      manuscriptName: manuscriptFile?.name || '',
+      manuscriptType: manuscriptFile?.type || '',
+      manuscriptSizeBytes: manuscriptFile?.size || 0,
     };
 
     const existingRaw = window.localStorage.getItem(BOOKS_STORAGE_KEY);
@@ -94,7 +210,14 @@ const UploadBook = () => {
     }
 
     window.localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify([newBook, ...existingBooks]));
-    navigate('/my-books');
+    if (manuscriptFile) {
+      try {
+        await saveManuscriptFile(bookId, manuscriptFile);
+      } catch {
+        // Keep publish flow successful even if local file cache fails.
+      }
+    }
+    navigate('/author/my-books');
   };
 
   const manuscriptSize = manuscriptFile
@@ -141,6 +264,125 @@ const UploadBook = () => {
                     className="w-full bg-primary/10 border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
                   />
                 </div>
+                <div className="relative">
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Find Book (Open Library)</label>
+                  <input
+                    type="text"
+                    value={bookQuery}
+                    onFocus={() => setShowBookResults(true)}
+                    onBlur={() => {
+                      window.setTimeout(() => setShowBookResults(false), 150);
+                    }}
+                    onChange={(e) => {
+                      setBookQuery(e.target.value);
+                      setShowBookResults(true);
+                    }}
+                    placeholder="Search title and import details"
+                    className="w-full bg-primary/10 border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+                  />
+                  {showBookResults && (bookResults.length > 0 || isLoadingBooks || bookError) && (
+                    <div className="absolute top-full mt-2 w-full z-20 bg-card-dark border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                      {isLoadingBooks && (
+                        <p className="px-4 py-3 text-xs text-slate-400">Searching books...</p>
+                      )}
+                      {!isLoadingBooks && bookError && (
+                        <p className="px-4 py-3 text-xs text-rose-400">{bookError}</p>
+                      )}
+                      {!isLoadingBooks &&
+                        !bookError &&
+                        bookResults.map((book) => (
+                          <button
+                            key={book.key || `${book.title}-${book.authorName}`}
+                            type="button"
+                            onClick={() => {
+                              setTitle(book.title || '');
+                              setBookQuery(book.title || '');
+                              if (book.authorName) {
+                                setAuthorQuery(book.authorName);
+                                setSelectedAuthor(null);
+                              }
+                              if (book.subject && !genre) {
+                                const mappedGenre = mapOpenLibrarySubjectToGenre(book.subject);
+                                if (mappedGenre) {
+                                  setGenre(mappedGenre);
+                                }
+                              }
+                              if (!description.trim()) {
+                                const publish = book.firstPublishYear ? `First published: ${book.firstPublishYear}.` : '';
+                                const summary = [book.title, book.authorName].filter(Boolean).join(' by ');
+                                setDescription([summary, publish].filter(Boolean).join(' '));
+                              }
+                              if (book.coverUrl) {
+                                setCoverPreviewUrl(book.coverUrl);
+                                setCoverFile({
+                                  name: 'Open Library cover',
+                                });
+                              }
+                              setShowBookResults(false);
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-primary/20 transition-colors border-b border-white/5 last:border-b-0"
+                          >
+                            <p className="text-sm font-semibold">{book.title}</p>
+                            <p className="text-[11px] text-slate-500">
+                              {book.authorName || 'Unknown author'}
+                              {book.firstPublishYear ? ` | ${book.firstPublishYear}` : ''}
+                            </p>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Author</label>
+                  <input
+                    type="text"
+                    value={authorQuery}
+                    onFocus={() => setShowAuthorResults(true)}
+                    onBlur={() => {
+                      window.setTimeout(() => setShowAuthorResults(false), 150);
+                    }}
+                    onChange={(e) => {
+                      setAuthorQuery(e.target.value);
+                      setSelectedAuthor(null);
+                      setShowAuthorResults(true);
+                    }}
+                    placeholder="Search author from Open Library"
+                    className="w-full bg-primary/10 border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+                  />
+
+                  {showAuthorResults && (authorResults.length > 0 || isLoadingAuthors || authorError) && (
+                    <div className="absolute top-full mt-2 w-full z-20 bg-card-dark border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                      {isLoadingAuthors && (
+                        <p className="px-4 py-3 text-xs text-slate-400">Searching authors...</p>
+                      )}
+                      {!isLoadingAuthors && authorError && (
+                        <p className="px-4 py-3 text-xs text-rose-400">{authorError}</p>
+                      )}
+                      {!isLoadingAuthors &&
+                        !authorError &&
+                        authorResults.map((author) => (
+                          <button
+                            key={author.key || author.name}
+                            type="button"
+                            onClick={() => {
+                              setSelectedAuthor(author);
+                              setAuthorQuery(author.name);
+                              setShowAuthorResults(false);
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-primary/20 transition-colors border-b border-white/5 last:border-b-0"
+                          >
+                            <p className="text-sm font-semibold">{author.name}</p>
+                            <p className="text-[11px] text-slate-500">
+                              {author.topWork ? `Top work: ${author.topWork}` : 'Open Library author'}
+                              {author.workCount ? ` | Works: ${author.workCount}` : ''}
+                            </p>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Genre</label>
                   <select
@@ -149,11 +391,9 @@ const UploadBook = () => {
                     className="w-full bg-primary/10 border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
                   >
                     <option value="">Select a genre</option>
-                    <option>Fantasy</option>
-                    <option>Sci-Fi</option>
-                    <option>Mystery</option>
-                    <option>Romance</option>
-                    <option>Thriller</option>
+                    {GENRE_OPTIONS.map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -265,7 +505,9 @@ const UploadBook = () => {
                   <FileText className="size-5 text-accent" />
                   <div>
                     <p className="text-sm font-medium">{manuscriptFile?.name ?? 'No manuscript selected'}</p>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold">{manuscriptFile ? `${manuscriptSize} • Ready to process` : 'Upload a file to continue'}</p>
+                    <p className="text-[10px] text-slate-500 uppercase font-bold">
+                      {manuscriptFile ? `${manuscriptSize} | Ready to process` : 'Upload a file to continue'}
+                    </p>
                   </div>
                 </div>
                 <button onClick={() => setManuscriptFile(null)} className="p-2 text-slate-500 hover:text-rose-500 transition-colors">
@@ -280,12 +522,18 @@ const UploadBook = () => {
           <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
             <div className="flex gap-8">
               <div className="w-40 flex-shrink-0">
-                <img src="https://picsum.photos/seed/preview/300/450" alt="Cover Preview" className="w-full aspect-[2/3] rounded-xl object-cover border border-white/10 shadow-xl" />
+                <img
+                  src={coverPreviewUrl || 'https://picsum.photos/seed/preview/300/450'}
+                  alt="Cover Preview"
+                  className="w-full aspect-[2/3] rounded-xl object-cover border border-white/10 shadow-xl"
+                />
               </div>
               <div className="flex-1 space-y-6">
                 <div>
                   <h2 className="text-2xl font-bold">{title || 'Untitled Book'}</h2>
-                  <p className="text-slate-400">{genre || 'Unknown Genre'} • {manuscriptSize}</p>
+                  <p className="text-slate-400">
+                    {authorQuery || 'Unknown Author'} | {genre || 'Unknown Genre'} | {manuscriptSize}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Summary</p>

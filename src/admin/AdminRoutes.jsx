@@ -12,20 +12,26 @@ import TopReaders from "./pages/TopReaders";
 import Users from "./pages/Users";
 import Login from "../auth/pages/Login";
 import Register from "../auth/pages/Register";
+import UserDashboard from "../auth/pages/UserDashboard";
+import { getHomePathByRole } from "../auth/roleUtils";
 
 export default function AdminRoutes() {
   const { isAuthenticated, user } = useAuth();
-  const homePath = isAuthenticated
-    ? user?.role === "Admin"
-      ? "/admin/dashboard"
-      : "/author"
-    : "/login";
+  const homePath = isAuthenticated ? getHomePathByRole(user?.role) : "/login";
 
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/" element={<Navigate to={homePath} replace />} />
+      <Route
+        path="/user/dashboard"
+        element={
+          <ProtectedRoute>
+            <UserDashboard />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/admin"

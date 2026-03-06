@@ -14,6 +14,7 @@ import Profile from '../pages/Profile';
 import Settings from '../pages/Setting';
 import Feedback from '../pages/Feedback';
 import EditBookPage from '../pages/EditBookPage';
+import BookDetailPage from '../pages/BookDetailPage';
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="feedback" element={<Feedback />} />
         <Route path="analytics" element={<Dashboard />} />
         <Route path="edit-book" element={<EditBookPage />} />
+        <Route path="book-detail" element={<BookDetailPage />} />
       </Route>
     </Routes>
   );

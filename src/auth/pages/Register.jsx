@@ -1,25 +1,33 @@
-import { BookOpen, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import { getHomePathByRole } from "../roleUtils";
 
-const ROLES = ["Reader", "Author", "Admin"];
+const ROLE_OPTIONS = [
+  { label: "Admin", roleId: "1" },
+  { label: "Author", roleId: "2" },
+  { label: "User", roleId: "3" },
+];
 
 export default function Register() {
-  const { isAuthenticated, register } = useAuth();
+  const { isAuthenticated, user, register } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [form, setForm] = useState({
-    name: "",
+    firstname: "",
+    lastname: "",
     email: "",
     password: "",
-    role: "Reader",
+    password_confirmation: "",
+    role_id: "3",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   if (isAuthenticated) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to={getHomePathByRole(user?.role)} replace />;
   }
 
   const onChange = (key, value) => {
@@ -30,17 +38,26 @@ export default function Register() {
 
   const onSubmit = async (event) => {
     event.preventDefault();
-    const trimmedName = form.name.trim();
-    if (trimmedName.length < 2) {
-      setError("Name must be at least 2 characters.");
+    const trimmedFirstName = form.firstname.trim();
+    const trimmedLastName = form.lastname.trim();
+    if (trimmedFirstName.length < 2 || trimmedLastName.length < 2) {
+      setError("First name and last name must be at least 2 characters.");
       return;
     }
-    if (form.password.length < 4) {
-      setError("Password must be at least 4 characters.");
+    if (form.password !== form.password_confirmation) {
+      setError("Password confirmation does not match.");
+      return;
+    }
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
 
-    const result = await register({ ...form, name: trimmedName });
+    const result = await register({
+      ...form,
+      firstname: trimmedFirstName,
+      lastname: trimmedLastName,
+    });
     if (!result.ok) {
       setError(result.error);
       return;
@@ -64,12 +81,24 @@ export default function Register() {
         <div className="rounded-[30px] border border-[#294267] bg-[linear-gradient(180deg,#18294a_0%,#162344_100%)] p-8 shadow-[0_22px_70px_rgba(8,10,35,0.5)]">
           <form className="space-y-5" onSubmit={onSubmit}>
             <div>
-              <label className="mb-2 block text-md font-semibold text-slate-400">Full Name</label>
+              <label className="mb-2 block text-md font-semibold text-slate-400">First Name</label>
               <input
                 type="text"
-                value={form.name}
-                onChange={(event) => onChange("name", event.target.value)}
-                placeholder="Your name"
+                value={form.firstname}
+                onChange={(event) => onChange("firstname", event.target.value)}
+                placeholder="Your first name"
+                required
+                className="w-full rounded-2xl border border-slate-300/30 bg-slate-200 px-4 py-3 text-l text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-slate-50/80"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-md font-semibold text-slate-400">Last Name</label>
+              <input
+                type="text"
+                value={form.lastname}
+                onChange={(event) => onChange("lastname", event.target.value)}
+                placeholder="Your last name"
                 required
                 className="w-full rounded-2xl border border-slate-300/30 bg-slate-200 px-4 py-3 text-l text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-slate-50/80"
               />
@@ -90,18 +119,18 @@ export default function Register() {
             <div>
               <label className="mb-2 block text-md font-semibold text-slate-400">I am a...</label>
               <div className="grid grid-cols-3 gap-2">
-                {ROLES.map((role) => (
+                {ROLE_OPTIONS.map((role) => (
                   <button
-                    key={role}
+                    key={role.roleId}
                     type="button"
-                    onClick={() => onChange("role", role)}
+                    onClick={() => onChange("role_id", role.roleId)}
                     className={`rounded-xl px-4 py-2.5 text-md font-semibold transition-all ${
-                      form.role === role
+                      form.role_id === role.roleId
                         ? "bg-gradient-to-r from-[#9f53f4] to-[#ec4899] text-white shadow-[0_8px_24px_rgba(180,69,228,0.4)]"
                         : "bg-[#263758] text-slate-400 hover:text-white"
                     }`}
                   >
-                    {role}
+                    {role.label}
                   </button>
                 ))}
               </div>
@@ -125,6 +154,28 @@ export default function Register() {
                   aria-label="Toggle password visibility"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-md font-semibold text-slate-400">Confirm Password</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={form.password_confirmation}
+                  onChange={(event) => onChange("password_confirmation", event.target.value)}
+                  placeholder="Confirm password"
+                  required
+                  className="w-full rounded-2xl border border-slate-300/30 bg-slate-200 px-4 py-3 pr-12 text-l text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-slate-50/80"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                  aria-label="Toggle confirm password visibility"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>

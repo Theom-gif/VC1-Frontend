@@ -10,6 +10,8 @@ import {
   Edit3,
   Star
 } from 'lucide-react';
+import { searchBooks } from '../services/openLibraryService';
+import { deleteManuscriptFile } from '../services/manuscriptStorage';
 
 const initialBooks = [
   { id: 1, title: "The Midnight Library", author: "Matt Haig", status: "Published", rating: 4.8, reads: "125k", sales: "$4,200", img: "https://picsum.photos/seed/book1/300/450" },
@@ -26,6 +28,10 @@ const MyBooks = () => {
   const MotionDiv = motion.div;
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [apiBooks, setApiBooks] = React.useState([]);
+  const [apiLoading, setApiLoading] = React.useState(false);
+  const [apiError, setApiError] = React.useState('');
   const [books, setBooks] = React.useState(() => {
     const saved = window.localStorage.getItem(BOOKS_STORAGE_KEY);
     if (!saved) return initialBooks;
@@ -83,9 +89,53 @@ const MyBooks = () => {
 
     if (typeof state.deletedBookId === 'number') {
       setBooks((prev) => prev.filter((book) => book.id !== state.deletedBookId));
+      deleteManuscriptFile(state.deletedBookId).catch(() => {});
       navigate(location.pathname, { replace: true, state: null });
     }
   }, [location.pathname, location.state, navigate]);
+
+  React.useEffect(() => {
+    const query = searchQuery.trim();
+    if (!query) {
+      setApiBooks([]);
+      setApiError('');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timerId = window.setTimeout(async () => {
+      setApiLoading(true);
+      setApiError('');
+      try {
+        const results = await searchBooks(query, {
+          limit: 8,
+          signal: controller.signal,
+        });
+        setApiBooks(results);
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          setApiError('Unable to load books from Open Library.');
+          setApiBooks([]);
+        }
+      } finally {
+        setApiLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timerId);
+    };
+  }, [searchQuery]);
+
+  const filteredLocalBooks = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return books;
+    return books.filter((book) => {
+      const haystack = `${book.title} ${book.author} ${book.status}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [books, searchQuery]);
 
   const toEditableBook = (book) => ({
     id: book.id,
@@ -96,9 +146,37 @@ const MyBooks = () => {
     reads: book.reads,
     sales: book.sales,
     coverUrl: book.img,
-    description: `${book.title} by ${book.author}.`,
-    category: 'Fantasy & Mystery',
+    description: book.description || `${book.title} by ${book.author}.`,
+    category: book.genre || 'Fantasy & Mystery',
     tags: ['fiction', book.status.toLowerCase()],
+  });
+
+  const toDetailBook = (book) => ({
+    id: book.id,
+    key: '',
+    title: book.title,
+    author: book.author,
+    coverUrl: book.img,
+    status: book.status,
+    rating: book.rating,
+    reads: book.reads,
+    sales: book.sales,
+    description: book.description || `${book.title} by ${book.author}.`,
+    genre: book.genre || '',
+    manuscriptName: book.manuscriptName || '',
+    manuscriptType: book.manuscriptType || '',
+    manuscriptSizeBytes: book.manuscriptSizeBytes || 0,
+    source: 'local',
+  });
+
+  const toApiDetailBook = (book) => ({
+    key: book.key,
+    title: book.title,
+    author: book.authorName,
+    coverUrl: book.coverUrl,
+    firstPublishYear: book.firstPublishYear,
+    description: '',
+    source: 'openlibrary',
   });
 
   return (
@@ -122,7 +200,9 @@ const MyBooks = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" />
           <input 
             type="text" 
-            placeholder="Search by title, genre or status..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search local and Open Library books..." 
             className="w-full bg-card-dark border border-white/5 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
           />
         </div>
@@ -144,7 +224,7 @@ const MyBooks = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {books.map((book, i) => (
+        {filteredLocalBooks.map((book, i) => (
           <MotionDiv 
             key={book.id}
             initial={{ opacity: 0, y: 20 }}
@@ -178,14 +258,14 @@ const MyBooks = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                 <div className="flex gap-2 w-full">
                   <button
-                    onClick={() => window.alert(`Opening "${book.title}" details.`)}
+                    onClick={() => navigate('/author/book-detail', { state: { book: toDetailBook(book) } })}
                     className="flex-1 flex items-center justify-center gap-2 py-2 bg-white text-black rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors"
                   >
                     <Eye className="size-3.5" />
                     <span>View</span>
                   </button>
                   <button
-                    onClick={() => navigate('/edit-book', { state: { book: toEditableBook(book) } })}
+                    onClick={() => navigate('/author/edit-book', { state: { book: toEditableBook(book) } })}
                     className="flex-1 flex items-center justify-center gap-2 py-2 bg-accent text-white rounded-lg text-xs font-bold hover:bg-accent/80 transition-colors"
                   >
                     <Edit3 className="size-3.5" />
@@ -218,6 +298,64 @@ const MyBooks = () => {
           </MotionDiv>
         ))}
       </div>
+
+      {searchQuery.trim() && (
+        <div className="mt-12">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">Open Library Results</h2>
+            {apiLoading && <p className="text-xs text-slate-400">Searching...</p>}
+          </div>
+
+          {apiError && (
+            <p className="text-sm text-rose-400 mb-4">{apiError}</p>
+          )}
+
+          {!apiError && !apiLoading && apiBooks.length === 0 && (
+            <p className="text-sm text-slate-400 mb-4">No API results found.</p>
+          )}
+
+          {apiBooks.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {apiBooks.map((book, i) => (
+                <MotionDiv
+                  key={book.key || `${book.title}-${book.authorName}-${i}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="group bg-card-dark border border-white/5 rounded-2xl overflow-hidden card-shadow hover:border-accent/30 transition-all duration-300"
+                >
+                  <div className="relative aspect-[2/3] overflow-hidden">
+                    <img
+                      src={book.coverUrl || 'https://picsum.photos/seed/open-library/300/450'}
+                      alt={book.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-sky-500/90 text-white">
+                        Open Library
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <h3 className="font-bold text-[color:var(--text)] truncate">{book.title}</h3>
+                    <p className="text-xs text-slate-500 mb-2">{book.authorName || 'Unknown Author'}</p>
+                    <p className="text-[11px] text-slate-500">
+                      {book.firstPublishYear ? `First published: ${book.firstPublishYear}` : 'Publish year unavailable'}
+                    </p>
+                    <button
+                      onClick={() => navigate('/author/book-detail', { state: { book: toApiDetailBook(book) } })}
+                      className="mt-4 w-full flex items-center justify-center gap-2 py-2 bg-white text-black rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors"
+                    >
+                      <Eye className="size-3.5" />
+                      <span>View Details</span>
+                    </button>
+                  </div>
+                </MotionDiv>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

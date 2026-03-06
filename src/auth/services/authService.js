@@ -1,10 +1,9 @@
 import { authApiClient } from "./apiClient";
 
 export function loginRequest(payload) {
-  return authApiClient.post("/auth/login", payload);
+  return authApiClient.post("/api/auth/login", payload);
 }
 
 export function registerRequest(payload) {
-  return authApiClient.post("/auth/register", payload);
+  return authApiClient.post("/api/auth/register", payload);
 }
-

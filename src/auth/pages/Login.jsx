@@ -1,19 +1,8 @@
-import { BookOpen, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
-
-const ROLES = ["Reader", "Author", "Admin"];
-
-function getHomePathByRole(role) {
-  if (role === "Admin") {
-    return "/admin/dashboard";
-  }
-  if (role === "Author") {
-    return "/author";
-  }
-  return "/author";
-}
+import { getHomePathByRole } from "../roleUtils";
 
 export default function Login() {
   const { isAuthenticated, user, login, loginDemo } = useAuth();
@@ -24,10 +13,10 @@ export default function Login() {
   const [form, setForm] = useState({
     email: "",
     password: "",
-    role: "Reader",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (isAuthenticated) {
     return <Navigate to={getHomePathByRole(user?.role)} replace />;
@@ -40,7 +29,9 @@ export default function Login() {
 
   const onSubmit = async (event) => {
     event.preventDefault();
+    setIsSubmitting(true);
     const result = await login(form);
+    setIsSubmitting(false);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -69,26 +60,6 @@ export default function Login() {
 
         <div className="rounded-[30px] border border-[#294267] bg-[linear-gradient(180deg,#18294a_0%,#162344_100%)] p-8 shadow-[0_22px_70px_rgba(8,10,35,0.5)]">
           <form className="space-y-5" onSubmit={onSubmit}>
-            <div>
-              <p className="mb-3 text-xl font-semibold text-slate-400">I am a...</p>
-              <div className="grid grid-cols-3 gap-2">
-                {ROLES.map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => onChange("role", role)}
-                    className={`rounded-xl px-4 py-2.5 text-md font-semibold transition-all ${
-                      form.role === role
-                        ? "bg-gradient-to-r from-[#9f53f4] to-[#ec4899] text-white shadow-[0_8px_24px_rgba(180,69,228,0.4)]"
-                        : "bg-[#263758] text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    {role}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div>
               <label className="mb-2 block text-md font-semibold text-slate-400">Email</label>
               <input
@@ -127,9 +98,10 @@ export default function Login() {
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#9f53f4] via-[#df4ca5] to-[#3b82f6] px-5 py-3 text-2l font-bold transition-all hover:-translate-y-0.5 hover:brightness-110"
             >
-              Sign In
+              {isSubmitting ? "Signing in..." : "Sign In"}
               <span aria-hidden>{"->"}</span>
             </button>
           </form>
@@ -157,10 +129,10 @@ export default function Login() {
             </button>
             <button
               type="button"
-              onClick={() => loginAsDemo("Reader")}
+              onClick={() => loginAsDemo("User")}
               className="rounded-xl bg-[#263758] px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-[#2d4168]"
             >
-              Demo Reader
+              Demo User
             </button>
           </div>
 
