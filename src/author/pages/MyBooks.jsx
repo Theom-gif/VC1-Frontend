@@ -23,6 +23,15 @@ const initialBooks = [
 ];
 
 const BOOKS_STORAGE_KEY = 'author_studio_books';
+const FALLBACK_COVER_URL = 'https://picsum.photos/seed/book-fallback/300/450';
+
+const getSafeCoverUrl = (value) => {
+  const text = String(value || '').trim();
+  if (text.startsWith('data:image/') || /^https?:\/\//i.test(text)) {
+    return text;
+  }
+  return FALLBACK_COVER_URL;
+};
 
 const MyBooks = () => {
   const MotionDiv = motion.div;
@@ -145,7 +154,7 @@ const MyBooks = () => {
     rating: book.rating,
     reads: book.reads,
     sales: book.sales,
-    coverUrl: book.img,
+    coverUrl: getSafeCoverUrl(book.img),
     description: book.description || `${book.title} by ${book.author}.`,
     category: book.genre || 'Fantasy & Mystery',
     tags: ['fiction', book.status.toLowerCase()],
@@ -156,7 +165,7 @@ const MyBooks = () => {
     key: '',
     title: book.title,
     author: book.author,
-    coverUrl: book.img,
+    coverUrl: getSafeCoverUrl(book.img),
     status: book.status,
     rating: book.rating,
     reads: book.reads,
@@ -173,7 +182,7 @@ const MyBooks = () => {
     key: book.key,
     title: book.title,
     author: book.authorName,
-    coverUrl: book.coverUrl,
+    coverUrl: getSafeCoverUrl(book.coverUrl),
     firstPublishYear: book.firstPublishYear,
     description: '',
     source: 'openlibrary',
@@ -234,9 +243,14 @@ const MyBooks = () => {
           >
             <div className="relative aspect-[2/3] overflow-hidden">
               <img 
-                src={book.img} 
+                src={getSafeCoverUrl(book.img)} 
                 alt={book.title} 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                onError={(event) => {
+                  if (event.currentTarget.src !== FALLBACK_COVER_URL) {
+                    event.currentTarget.src = FALLBACK_COVER_URL;
+                  }
+                }}
               />
               <div className="absolute top-3 left-3">
                 <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
@@ -326,9 +340,14 @@ const MyBooks = () => {
                 >
                   <div className="relative aspect-[2/3] overflow-hidden">
                     <img
-                      src={book.coverUrl || 'https://picsum.photos/seed/open-library/300/450'}
+                      src={getSafeCoverUrl(book.coverUrl)}
                       alt={book.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(event) => {
+                        if (event.currentTarget.src !== FALLBACK_COVER_URL) {
+                          event.currentTarget.src = FALLBACK_COVER_URL;
+                        }
+                      }}
                     />
                     <div className="absolute top-3 left-3">
                       <span className="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-sky-500/90 text-white">

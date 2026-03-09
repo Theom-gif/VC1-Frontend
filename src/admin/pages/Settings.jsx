@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { cn } from "../../lib/utils";
 
 const notifications = [
@@ -8,6 +9,65 @@ const notifications = [
 ];
 
 const Settings = () => {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [msg, setMsg] = useState({ type: "", text: "" });
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setMsg({ type: "", text: "" });
+
+    const token =
+      window.localStorage.getItem("bookhub_token") ||
+      window.sessionStorage.getItem("bookhub_token");
+    if (!token) {
+      setMsg({ type: "error", text: "Missing login token. Please login again." });
+      return;
+    }
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/admin/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+          confirmPassword,
+        }),
+      });
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok || !data.success) {
+        setMsg({
+          type: "error",
+          text: data.message || `Password update failed (HTTP ${res.status}).`,
+        });
+        return;
+      }
+
+      setMsg({ type: "success", text: data.message || "Password updated successfully." });
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      setMsg({
+        type: "error",
+        text: error?.message || "Network error. Please try again.",
+      });
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 space-y-8">
@@ -33,14 +93,39 @@ const Settings = () => {
 
         <div className="glass-card p-6">
           <h3 className="text-xl font-bold mb-6">Change Password</h3>
-          <div className="space-y-4">
-            <input type="password" placeholder="Current password" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3" />
-            <input type="password" placeholder="New password" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3" />
-            <input type="password" placeholder="Confirm new password" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3" />
-          </div>
-          <button className="mt-8 w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl">
-            Update Password
-          </button>
+          <form className="space-y-4" onSubmit={onSubmit}>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Current password"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+            />
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="New password"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+            />
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+            />
+
+            {msg.text && (
+              <p className={msg.type === "success" ? "text-green-400" : "text-red-400"}>
+                {msg.text}
+              </p>
+            )}
+
+            <button type="submit" className="mt-4 w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl">
+              Update Password
+            </button>
+          </form>
         </div>
       </div>
 

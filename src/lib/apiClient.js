@@ -16,12 +16,15 @@ export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
+    Accept: "application/json",
   },
   timeout: API_TIMEOUT_MS,
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = window.localStorage.getItem(TOKEN_KEY);
+  const token =
+    window.localStorage.getItem(TOKEN_KEY) ||
+    window.sessionStorage.getItem(TOKEN_KEY);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

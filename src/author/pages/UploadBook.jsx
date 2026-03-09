@@ -17,6 +17,8 @@ import { saveManuscriptFile } from '../services/manuscriptStorage';
 const BOOKS_STORAGE_KEY = 'author_studio_books';
 const PROFILE_STORAGE_KEY = 'author_studio_profile';
 const GENRE_OPTIONS = ['Fantasy', 'Sci-Fi', 'Mystery', 'Romance', 'Thriller'];
+const NATIVE_OPTION_STYLE = { color: '#0f172a', backgroundColor: '#ffffff' };
+const FALLBACK_COVER_URL = 'https://picsum.photos/seed/new-book/300/450';
 
 const mapOpenLibrarySubjectToGenre = (subject = '') => {
   const normalized = subject.toLowerCase();
@@ -26,6 +28,12 @@ const mapOpenLibrarySubjectToGenre = (subject = '') => {
   if (normalized.includes('romance') || normalized.includes('love')) return 'Romance';
   if (normalized.includes('thriller') || normalized.includes('suspense')) return 'Thriller';
   return '';
+};
+
+const isValidCoverUrl = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  const trimmed = value.trim();
+  return trimmed.startsWith('data:image/') || /^https?:\/\//i.test(trimmed);
 };
 
 const UploadBook = () => {
@@ -53,6 +61,7 @@ const UploadBook = () => {
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState('');
   const [manuscriptFile, setManuscriptFile] = useState(null);
+  const [coverError, setCoverError] = useState('');
 
   useEffect(() => {
     const defaultAuthor = 'Alex Rivera';
@@ -151,6 +160,12 @@ const UploadBook = () => {
   const handleCoverSelected = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!String(file.type || '').startsWith('image/')) {
+      setCoverError('Please choose a valid image file.');
+      e.target.value = '';
+      return;
+    }
+    setCoverError('');
     setCoverFile(file);
     const reader = new FileReader();
     reader.onload = () => {
@@ -192,7 +207,7 @@ const UploadBook = () => {
       rating: 0,
       reads: '0',
       sales: '$0',
-      img: coverPreviewUrl || 'https://picsum.photos/seed/new-book/300/450',
+      img: isValidCoverUrl(coverPreviewUrl) ? coverPreviewUrl : FALLBACK_COVER_URL,
       manuscriptName: manuscriptFile?.name || '',
       manuscriptType: manuscriptFile?.type || '',
       manuscriptSizeBytes: manuscriptFile?.size || 0,
@@ -317,6 +332,7 @@ const UploadBook = () => {
                                 setCoverFile({
                                   name: 'Open Library cover',
                                 });
+                                setCoverError('');
                               }
                               setShowBookResults(false);
                             }}
@@ -388,11 +404,11 @@ const UploadBook = () => {
                   <select
                     value={genre}
                     onChange={(e) => setGenre(e.target.value)}
-                    className="w-full bg-primary/10 border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+                    className="w-full bg-primary/10 border border-white/5 rounded-xl px-4 py-3 text-sm text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
                   >
-                    <option value="">Select a genre</option>
+                    <option value="" style={NATIVE_OPTION_STYLE}>Select a genre</option>
                     {GENRE_OPTIONS.map((option) => (
-                      <option key={option}>{option}</option>
+                      <option key={option} style={NATIVE_OPTION_STYLE}>{option}</option>
                     ))}
                   </select>
                 </div>
@@ -427,16 +443,31 @@ const UploadBook = () => {
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}
                 >
-                  <div className="p-4 bg-primary/20 rounded-full text-accent">
-                    <ImageIcon className="size-8" />
-                  </div>
-                  <div className="text-center px-6">
-                    <p className="text-sm font-bold">Upload Cover</p>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      {coverFile ? `Selected: ${coverFile.name}` : 'Drag/drop or click. JPG, PNG (Max 5MB)'}
-                    </p>
-                  </div>
+                  {coverPreviewUrl ? (
+                    <img
+                      src={coverPreviewUrl}
+                      alt="Selected cover preview"
+                      className="w-full h-full rounded-2xl object-cover"
+                      onError={() => {
+                        setCoverPreviewUrl('');
+                        setCoverError('Cover preview could not be displayed.');
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <div className="p-4 bg-primary/20 rounded-full text-accent">
+                        <ImageIcon className="size-8" />
+                      </div>
+                      <div className="text-center px-6">
+                        <p className="text-sm font-bold">Upload Cover</p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          {coverFile ? `Selected: ${coverFile.name}` : 'Drag/drop or click. JPG, PNG (Max 5MB)'}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
+                {coverError && <p className="text-xs text-rose-400">{coverError}</p>}
                 <input
                   ref={coverInputRef}
                   type="file"

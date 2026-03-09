@@ -49,8 +49,13 @@ export const EditBookForm = ({ book, onSave, onCancel, onDelete }) => {
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setFormData((prev) => ({ ...prev, coverUrl: objectUrl }));
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setFormData((prev) => ({ ...prev, coverUrl: reader.result }));
+      }
+    };
+    reader.readAsDataURL(file);
     event.target.value = '';
   };
 

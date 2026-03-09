@@ -12,6 +12,14 @@ const fallbackBook = {
   source: 'local',
 };
 
+const getSafeCoverUrl = (value) => {
+  const text = String(value || '').trim();
+  if (text.startsWith('data:image/') || /^https?:\/\//i.test(text)) {
+    return text;
+  }
+  return fallbackBook.coverUrl;
+};
+
 const formatFileSize = (bytes) => {
   if (!bytes || bytes <= 0) return '';
   const mb = bytes / (1024 * 1024);
@@ -112,9 +120,14 @@ const BookDetailPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
         <div className="bg-card-dark rounded-2xl border border-white/5 p-4">
           <img
-            src={book.coverUrl || book.img || fallbackBook.coverUrl}
+            src={getSafeCoverUrl(book.coverUrl || book.img)}
             alt={book.title}
             className="w-full aspect-[2/3] object-cover rounded-xl border border-white/10"
+            onError={(event) => {
+              if (event.currentTarget.src !== fallbackBook.coverUrl) {
+                event.currentTarget.src = fallbackBook.coverUrl;
+              }
+            }}
           />
         </div>
 
