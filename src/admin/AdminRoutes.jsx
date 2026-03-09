@@ -15,8 +15,10 @@ import Login from "../auth/pages/Login";
 import Register from "../auth/pages/Register";
 import UserDashboard from "../auth/pages/UserDashboard";
 import {
+  getInternalUserPortalPath,
   getHomePathByRole,
   getRoleName,
+  isExternalUserPortal,
   USER_PORTAL_URL,
 } from "../auth/roleUtils";
 
@@ -31,6 +33,8 @@ export default function AdminRoutes() {
   const { isAuthenticated, isReady, user } = useAuth();
   const roleName = getRoleName(user?.role);
   const homePath = isAuthenticated ? getHomePathByRole(user?.role) : "/login";
+  const userPortalPath = getInternalUserPortalPath() || "/user/dashboard";
+  const useExternalUserPortal = isExternalUserPortal();
 
   if (!isReady) {
     return null;
@@ -43,7 +47,7 @@ export default function AdminRoutes() {
       <Route
         path="/"
         element={
-          isAuthenticated && roleName === "User" ? (
+          isAuthenticated && roleName === "User" && useExternalUserPortal ? (
             <ExternalRedirect to={USER_PORTAL_URL} />
           ) : (
             <Navigate to={homePath} replace />
@@ -54,7 +58,7 @@ export default function AdminRoutes() {
         path="/user/dashboard"
         element={
           <ProtectedRoute>
-            {roleName === "User" ? (
+            {roleName === "User" && useExternalUserPortal ? (
               <ExternalRedirect to={USER_PORTAL_URL} />
             ) : (
               <UserDashboard />
@@ -62,6 +66,16 @@ export default function AdminRoutes() {
           </ProtectedRoute>
         }
       />
+      {userPortalPath !== "/user/dashboard" && (
+        <Route
+          path={userPortalPath}
+          element={
+            <ProtectedRoute>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+      )}
 
       <Route
         path="/admin"

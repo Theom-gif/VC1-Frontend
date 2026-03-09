@@ -16,6 +16,15 @@ import { getBooksRequest, importLocalBooksRequest } from '../services/bookServic
 
 const BOOKS_STORAGE_KEY = 'author_studio_books';
 const DEFAULT_COVER = 'https://picsum.photos/seed/new-book/300/450';
+const FALLBACK_COVER_URL = DEFAULT_COVER;
+
+const getSafeCoverUrl = (value) => {
+  const text = String(value || '').trim();
+  if (text.startsWith('data:image/') || /^https?:\/\//i.test(text)) {
+    return text;
+  }
+  return FALLBACK_COVER_URL;
+};
 
 const mapLocalBookForImport = (book) => ({
   title: book?.title || 'Untitled',

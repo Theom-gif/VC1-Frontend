@@ -73,7 +73,12 @@ export const mapApiBookToUiBook = (book) => ({
 
 export const getBooksRequest = async () => {
   const response = await apiClient.get(BOOKS_ENDPOINT);
-  const rows = Array.isArray(response?.data?.data) ? response.data.data : [];
+  const payload = response?.data;
+  const rows =
+    (Array.isArray(payload?.data) && payload.data) ||
+    (Array.isArray(payload?.books) && payload.books) ||
+    (Array.isArray(payload) && payload) ||
+    [];
   return rows.map(mapApiBookToUiBook);
 };
 

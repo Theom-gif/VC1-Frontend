@@ -5,7 +5,7 @@ export function normalizeRoleValue(role) {
 const trimTrailingSlash = (value) => String(value || "").replace(/\/+$/, "");
 
 export const USER_PORTAL_URL =
-  "http://localhost:3001/";
+  String(import.meta.env.VITE_USER_PORTAL_URL || "/user/dashboard").trim();
 
 export function getInternalUserPortalPath() {
   const rawTarget = String(USER_PORTAL_URL || "").trim();

@@ -3,8 +3,10 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import {
+  getInternalUserPortalPath,
   getHomePathByRole,
   getRoleName,
+  isExternalUserPortal,
   USER_PORTAL_URL,
 } from "../roleUtils";
 
@@ -35,8 +37,11 @@ export default function Register() {
   }
 
   if (isAuthenticated && getRoleName(user?.role) === "User") {
-    window.location.replace(USER_PORTAL_URL);
-    return null;
+    if (isExternalUserPortal()) {
+      window.location.replace(USER_PORTAL_URL);
+      return null;
+    }
+    return <Navigate to={getInternalUserPortalPath() || "/user/dashboard"} replace />;
   }
 
   if (isAuthenticated) {
@@ -82,7 +87,11 @@ export default function Register() {
 
     if (loginResult.ok) {
       if (getRoleName(loginResult.user?.role || form.role) === "User") {
-        window.location.replace(USER_PORTAL_URL);
+        if (isExternalUserPortal()) {
+          window.location.replace(USER_PORTAL_URL);
+          return;
+        }
+        navigate(getInternalUserPortalPath() || "/user/dashboard", { replace: true });
         return;
       }
       navigate(getHomePathByRole(loginResult.user?.role || form.role), { replace: true });

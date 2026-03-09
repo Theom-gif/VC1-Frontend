@@ -11,7 +11,7 @@ export default function UserDashboard() {
         <h1 className="text-3xl font-bold">User Dashboard</h1>
         <p className="mt-3 text-slate-300">Welcome, {displayName}.</p>
         <p className="mt-2 text-slate-400">
-          Your account is set to role <span className="font-semibold text-white">User (3)</span>.
+          Your account is set to role <span className="font-semibold text-white">User</span>.
         </p>
         <button
           type="button"

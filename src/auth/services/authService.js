@@ -56,8 +56,11 @@ async function postWithFallback(path, body, headers) {
         base === "" ||
         (typeof window !== "undefined" && trimTrailingSlash(base) === trimTrailingSlash(window.location.origin));
 
-      // If /api is not routed on current origin, continue trying other backend candidates.
-      if (hasResponse && isSameOriginCandidate && status === 404) {
+      // If /api is not routed on current origin, or dev proxy fails (e.g. ECONNREFUSED),
+      // continue trying direct backend candidates.
+      const isRetriableSameOriginStatus =
+        status === 404 || (status >= 500 && status < 600);
+      if (hasResponse && isSameOriginCandidate && isRetriableSameOriginStatus) {
         continue;
       }
 
