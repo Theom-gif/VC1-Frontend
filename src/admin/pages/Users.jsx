@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pencil, Save, Search, Trash2, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { API_BASE_URL } from "../../lib/apiClient";
+import { useLanguage } from "../../i18n/LanguageContext";
 
 const TOKEN_KEY = "bookhub_token";
 const trimTrailingSlash = (value) => String(value || "").replace(/\/+$/, "");
@@ -78,6 +79,7 @@ const toApiError = async (response, fallbackMessage) => {
 };
 
 const Users = () => {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [users, setUsers] = useState([]);
@@ -102,7 +104,7 @@ const Users = () => {
         window.localStorage.getItem(TOKEN_KEY) ||
         window.sessionStorage.getItem(TOKEN_KEY);
       if (!token) {
-        throw new Error("Missing auth token. Please login again.");
+        throw new Error(t("Missing login token. Please login again."));
       }
 
       const orderedBases = [
@@ -187,7 +189,7 @@ const Users = () => {
         new Error("Cannot connect to backend. Start Laravel server on port 8000.")
       );
     },
-    [activeApiBase, apiBaseCandidates],
+    [activeApiBase, apiBaseCandidates, t],
   );
 
   const fetchUsers = useCallback(async (signal) => {
@@ -201,7 +203,7 @@ const Users = () => {
         path: searchPath,
         method: "GET",
         signal,
-        fallbackMessage: "Failed to load users.",
+        fallbackMessage: t("Failed to load users."),
       });
 
       const json = await response.json();
@@ -212,13 +214,13 @@ const Users = () => {
         return;
       }
       setUsers([]);
-      setError(fetchError?.message || "Failed to load users.");
+      setError(fetchError?.message || t("Failed to load users."));
     } finally {
       if (!signal?.aborted) {
         setIsLoading(false);
       }
     }
-  }, [requestWithFallback, roleFilter, searchQuery]);
+  }, [requestWithFallback, roleFilter, searchQuery, t]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -256,7 +258,7 @@ const Users = () => {
     const role = normalizeRole(editForm.role);
 
     if (!firstName || !lastName || !email) {
-      setActionError("First name, last name, and email are required.");
+      setActionError(t("First name, last name, and email are required."));
       return;
     }
 
@@ -264,7 +266,7 @@ const Users = () => {
       window.localStorage.getItem(TOKEN_KEY) ||
       window.sessionStorage.getItem(TOKEN_KEY);
     if (!token) {
-      setActionError("Missing auth token. Please login again.");
+      setActionError(t("Missing login token. Please login again."));
       return;
     }
 
@@ -283,7 +285,7 @@ const Users = () => {
     setActionSuccess("");
     try {
       let updated = false;
-      let lastErrorMessage = "Failed to update user.";
+      let lastErrorMessage = t("Failed to update user.");
 
       for (const method of ["PUT", "PATCH"]) {
         try {
@@ -291,12 +293,12 @@ const Users = () => {
             path: `/api/admin/users/${id}`,
             method,
             body: payload,
-            fallbackMessage: "Failed to update user.",
+            fallbackMessage: t("Failed to update user."),
           });
           updated = true;
           break;
         } catch (attemptError) {
-          const text = String(attemptError?.message || "Failed to update user.");
+          const text = String(attemptError?.message || t("Failed to update user."));
           lastErrorMessage = text;
           const isMethodMismatch =
             text.includes("HTTP 405") ||
@@ -313,24 +315,24 @@ const Users = () => {
       }
 
       setEditingId(null);
-      setActionSuccess("User updated successfully.");
+      setActionSuccess(t("User updated successfully."));
       await fetchUsers();
     } catch (saveError) {
-      setActionError(saveError?.message || "Failed to update user.");
+      setActionError(saveError?.message || t("Failed to update user."));
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const handleDelete = async (user) => {
-    const confirmed = window.confirm(`Delete user "${user.first_name} ${user.last_name}"?`);
+    const confirmed = window.confirm(t("Delete user \"{name}\"?", { name: `${user.first_name} ${user.last_name}` }));
     if (!confirmed) return;
 
     const token =
       window.localStorage.getItem(TOKEN_KEY) ||
       window.sessionStorage.getItem(TOKEN_KEY);
     if (!token) {
-      setActionError("Missing auth token. Please login again.");
+      setActionError(t("Missing login token. Please login again."));
       return;
     }
 
@@ -341,17 +343,17 @@ const Users = () => {
       await requestWithFallback({
         path: `/api/admin/users/${user.id}`,
         method: "DELETE",
-        fallbackMessage: "Failed to delete user.",
+        fallbackMessage: t("Failed to delete user."),
       });
 
       if (editingId === user.id) {
         setEditingId(null);
       }
 
-      setActionSuccess("User deleted successfully.");
+      setActionSuccess(t("User deleted successfully."));
       await fetchUsers();
     } catch (deleteError) {
-      setActionError(deleteError?.message || "Failed to delete user.");
+      setActionError(deleteError?.message || t("Failed to delete user."));
     } finally {
       setActionLoadingId(null);
     }
@@ -367,7 +369,7 @@ const Users = () => {
               type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search users..."
+              placeholder={t("Search users...")}
               className="bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-purple-500 w-64"
             />
           </div>
@@ -376,23 +378,23 @@ const Users = () => {
             onChange={(event) => setRoleFilter(event.target.value)}
             className="bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none"
           >
-            <option value="All">All Roles</option>
-            <option value="User">User</option>
-            <option>Admin</option>
-            <option>Author</option>
+            <option value="All">{t("All Roles")}</option>
+            <option value="User">{t("User")}</option>
+            <option value="Admin">{t("Admin")}</option>
+            <option value="Author">{t("Author")}</option>
           </select>
         </div>
       </div>
       <table className="w-full text-left">
         <thead>
           <tr className="bg-white/2 text-slate-500 text-xs font-bold uppercase tracking-wider">
-            <th className="px-6 py-4">ID</th>
-            <th className="px-6 py-4">Role</th>
-            <th className="px-6 py-4">First Name</th>
-            <th className="px-6 py-4">Last Name</th>
-            <th className="px-6 py-4">Email</th>
-            <th className="px-6 py-4">Created At</th>
-            <th className="px-6 py-4 text-right">Actions</th>
+            <th className="px-6 py-4">{t("ID")}</th>
+            <th className="px-6 py-4">{t("Role")}</th>
+            <th className="px-6 py-4">{t("First Name")}</th>
+            <th className="px-6 py-4">{t("Last Name")}</th>
+            <th className="px-6 py-4">{t("Email")}</th>
+            <th className="px-6 py-4">{t("Created At")}</th>
+            <th className="px-6 py-4 text-right">{t("Actions")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
@@ -407,7 +409,7 @@ const Users = () => {
           {isLoading && (
             <tr>
               <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400">
-                Loading users...
+                {t("Loading users...")}
               </td>
             </tr>
           )}
@@ -430,9 +432,9 @@ const Users = () => {
                     onChange={(event) => setEditForm((prev) => ({ ...prev, role: event.target.value }))}
                     className="bg-gray-800 border border-white/10 rounded-lg px-2 py-1 text-sm focus:outline-none"
                   >
-                    <option value="User">User</option>
-                    <option value="Author">Author</option>
-                    <option value="Admin">Admin</option>
+                    <option value="User">{t("User")}</option>
+                    <option value="Author">{t("Author")}</option>
+                    <option value="Admin">{t("Admin")}</option>
                   </select>
                 ) : (
                   <span
@@ -445,7 +447,7 @@ const Users = () => {
                           : "text-blue-400 bg-blue-400/10",
                     )}
                   >
-                    {user.role}
+                    {t(user.role)}
                   </span>
                 )}
               </td>
@@ -497,7 +499,7 @@ const Users = () => {
                         className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
                       >
                         <Save size={14} />
-                        Save
+                        {t("Save")}
                       </button>
                       <button
                         type="button"
@@ -506,7 +508,7 @@ const Users = () => {
                         className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:opacity-50"
                       >
                         <X size={14} />
-                        Cancel
+                        {t("Cancel")}
                       </button>
                     </>
                   ) : (
@@ -517,7 +519,7 @@ const Users = () => {
                       className="inline-flex items-center gap-1 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-300 transition hover:bg-blue-500/20 disabled:opacity-50"
                     >
                       <Pencil size={14} />
-                      Edit
+                      {t("Edit")}
                     </button>
                   )}
                   <button
@@ -527,7 +529,7 @@ const Users = () => {
                     className="inline-flex items-center gap-1 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
                   >
                     <Trash2 size={14} />
-                    Delete
+                    {t("Delete")}
                   </button>
                 </div>
               </td>
@@ -536,7 +538,7 @@ const Users = () => {
           {!isLoading && !error && users.length === 0 && (
             <tr>
               <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400">
-                No users found.
+                {t("No users found.")}
               </td>
             </tr>
           )}

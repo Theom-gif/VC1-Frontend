@@ -10,22 +10,24 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "../../lib/utils";
-
-const links = [
-  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/admin/users", label: "Users", icon: Users },
-  { to: "/admin/approvals", label: "Approvals", icon: CheckSquare },
-  { to: "/admin/categories", label: "Categories", icon: Grid },
-  { to: "/admin/books", label: "Books", icon: BookOpen },
-  { to: "/admin/readers", label: "Top Readers", icon: Trophy },
-  { to: "/admin/monitor", label: "System Monitor", icon: Activity },
-  { to: "/admin/settings", label: "Settings", icon: Settings },
-];
+import { useLanguage } from "../../i18n/LanguageContext";
 
 export default function Sidebar() {
+  const { t } = useLanguage();
+  const links = [
+    { to: "/admin/dashboard", label: t("Dashboard"), icon: LayoutDashboard },
+    { to: "/admin/users", label: t("Users"), icon: Users },
+    { to: "/admin/approvals", label: t("Approvals"), icon: CheckSquare },
+    { to: "/admin/categories", label: t("Categories"), icon: Grid },
+    { to: "/admin/books", label: t("Books"), icon: BookOpen },
+    { to: "/admin/readers", label: t("Top Readers"), icon: Trophy },
+    { to: "/admin/monitor", label: t("System Monitor"), icon: Activity },
+    { to: "/admin/settings", label: t("Settings"), icon: Settings },
+  ];
+
   return (
     <aside className="fixed inset-y-0 left-0 z-20 w-64 border-r border-white/5 bg-bg-sidebar p-5">
-      <div className="mb-6 text-lg font-bold">Admin Portal </div>
+      <div className="mb-6 text-lg font-bold">{t("Admin Portal")}</div>
       <nav className="space-y-2">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink

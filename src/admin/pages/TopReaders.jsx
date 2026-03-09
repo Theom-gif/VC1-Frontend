@@ -1,5 +1,6 @@
 import { ArrowUpRight, BookOpen } from "lucide-react";
 import { USERS } from "../data/mockData";
+import { useLanguage } from "../../i18n/LanguageContext";
 
 const leaders = [
   { user: USERS[4], booksRead: 52 },
@@ -12,6 +13,8 @@ const getAvatarUrl = (user) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(user))}&background=0f172a&color=ffffff`;
 
 const TopReaders = () => {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -26,7 +29,7 @@ const TopReaders = () => {
             <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl">
               <BookOpen size={16} className="text-purple-500" />
               <span className="font-bold">{entry.booksRead}</span>
-              <span className="text-xs text-slate-500 uppercase font-bold">Books Read</span>
+              <span className="text-xs text-slate-500 uppercase font-bold">{t("Books Read")}</span>
             </div>
           </div>
         ))}
@@ -34,21 +37,21 @@ const TopReaders = () => {
 
       <div className="glass-card overflow-hidden">
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <h3 className="text-xl font-bold">Complete Leaderboard</h3>
+          <h3 className="text-xl font-bold">{t("Complete Leaderboard")}</h3>
           <select className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:outline-none">
-            <option>All Time</option>
-            <option>This Month</option>
-            <option>This Week</option>
+            <option>{t("All Time")}</option>
+            <option>{t("This Month")}</option>
+            <option>{t("This Week")}</option>
           </select>
         </div>
         <table className="w-full text-left">
           <thead>
             <tr className="bg-white/2 text-slate-500 text-xs font-bold uppercase tracking-wider">
-              <th className="px-6 py-4">Rank</th>
-              <th className="px-6 py-4">Reader</th>
-              <th className="px-6 py-4">Books Read</th>
-              <th className="px-6 py-4">Member Since</th>
-              <th className="px-6 py-4 text-right">Trend</th>
+              <th className="px-6 py-4">{t("Rank")}</th>
+              <th className="px-6 py-4">{t("Reader")}</th>
+              <th className="px-6 py-4">{t("Books Read")}</th>
+              <th className="px-6 py-4">{t("Member Since")}</th>
+              <th className="px-6 py-4 text-right">{t("Trend")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">

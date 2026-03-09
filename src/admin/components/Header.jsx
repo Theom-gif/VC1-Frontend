@@ -1,6 +1,7 @@
 import { Bell, LogOut } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useLanguage } from "../../i18n/LanguageContext";
 
 const TITLES = {
   "/admin/dashboard": "Admin Dashboard",
@@ -17,7 +18,8 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
-  const title = TITLES[location.pathname] || "Admin";
+  const { t } = useLanguage();
+  const title = t(TITLES[location.pathname] || "Admin");
 
   const handleLogout = () => {
     logout();
@@ -29,8 +31,8 @@ export default function Header() {
       <div>
         <h1 className="text-2xl font-bold">{title}</h1>
         <p className="text-sm text-slate-400">
-          Admin control center
-          {user ? ` - ${user.name} (${user.role})` : ""}
+          {t("Admin control center")}
+          {user ? ` - ${user.name} (${t(user.role)})` : ""}
         </p>
       </div>
       <div className="flex items-center gap-3">
@@ -42,7 +44,7 @@ export default function Header() {
           className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
         >
           <LogOut size={16} />
-          Logout
+          {t("Logout")}
         </button>
       </div>
     </header>

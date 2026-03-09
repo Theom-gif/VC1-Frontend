@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  --font-family-base: Inter, "Segoe UI", Arial, sans-serif;
   --bg: #0b1416;
   --bg-soft: #122024;
   --surface: #16282b;
@@ -12,7 +13,7 @@
   --on-primary: #f8fafc;
   --border: rgba(255, 255, 255, 0.08);
 
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-family: var(--font-family-base);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -32,6 +33,18 @@
   --border: rgba(15, 23, 42, 0.12);
 }
 
+html[data-language="en"] {
+  --font-family-base: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+html[data-language="km"] {
+  --font-family-base: "Noto Sans Khmer", "Khmer OS Battambang", "Khmer OS Siemreap", "Segoe UI", sans-serif;
+}
+
+html[data-language="zh"] {
+  --font-family-base: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -48,6 +61,23 @@ body {
   min-width: 320px;
   background: var(--bg);
   color: var(--text);
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-family-base);
+}
+
+select {
+  color: var(--text);
+}
+
+select option {
+  color: #0f172a;
+  background-color: #ffffff;
 }
 
 a {

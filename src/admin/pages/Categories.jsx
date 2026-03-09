@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { CATEGORIES } from "../data/mockData";
+import { useLanguage } from "../../i18n/LanguageContext";
 
 const ICON_MAP = {
   Tech: Cpu,
@@ -18,16 +19,18 @@ const ICON_MAP = {
 };
 
 const Categories = () => {
+  const { t } = useLanguage();
+
   return (
     <section className="space-y-9 rounded-3xl border border-white/5 bg-gradient-to-b from-[#0d1f3f] via-[#081838] to-[#06122d] p-8 shadow-[0_24px_80px_rgba(2,8,24,0.45)]">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="space-y-2">
-          <h2 className="text-4xl font-extrabold tracking-tight text-white md:text-5xl">Categories</h2>
-          <p className="text-xl font-normal text-slate-400 md:text-3xl">Manage book categories and genres</p>
+          <h2 className="text-4xl font-extrabold tracking-tight text-white md:text-5xl">{t("Categories")}</h2>
+          <p className="text-xl font-normal text-slate-400 md:text-3xl">{t("Manage book categories and genres")}</p>
         </div>
         <button className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#8f4cf6] to-[#e5459e] px-7 py-4 text-base font-semibold text-white shadow-[0_8px_30px_rgba(180,69,228,0.45)] transition-all hover:-translate-y-0.5 hover:brightness-110 md:text-lg">
           <Plus size={22} />
-          Add Category
+          {t("Add Category")}
         </button>
       </div>
 
@@ -45,7 +48,7 @@ const Categories = () => {
             <h3 className="mb-2 text-3xl font-bold tracking-tight text-white">{cat.name}</h3>
             <p className="flex items-center gap-2 text-lg text-slate-400">
               <BookOpenText size={18} className="text-slate-400" />
-              {cat.count} books
+              {cat.count} {t("books")}
             </p>
             </article>
           );
