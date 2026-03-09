@@ -15,7 +15,6 @@ import { deleteManuscriptFile } from '../services/manuscriptStorage';
 import { getBooksRequest, importLocalBooksRequest } from '../services/bookService';
 
 const BOOKS_STORAGE_KEY = 'author_studio_books';
-<<<<<<< HEAD
 const DEFAULT_COVER = 'https://picsum.photos/seed/new-book/300/450';
 
 const mapLocalBookForImport = (book) => ({
@@ -25,17 +24,6 @@ const mapLocalBookForImport = (book) => ({
   category: book?.genre || '',
   cover_image_url: book?.img || '',
 });
-=======
-const FALLBACK_COVER_URL = 'https://picsum.photos/seed/book-fallback/300/450';
-
-const getSafeCoverUrl = (value) => {
-  const text = String(value || '').trim();
-  if (text.startsWith('data:image/') || /^https?:\/\//i.test(text)) {
-    return text;
-  }
-  return FALLBACK_COVER_URL;
-};
->>>>>>> 273b03a4b41e73c7807645eb3aa301b82950f5bf
 
 const MyBooks = () => {
   const MotionDiv = motion.div;
@@ -250,11 +238,7 @@ const MyBooks = () => {
           >
             <div className="relative aspect-[2/3] overflow-hidden">
               <img 
-<<<<<<< HEAD
                 src={book.img || DEFAULT_COVER}
-=======
-                src={getSafeCoverUrl(book.img)} 
->>>>>>> 273b03a4b41e73c7807645eb3aa301b82950f5bf
                 alt={book.title} 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 onError={(event) => {

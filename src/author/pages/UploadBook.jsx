@@ -60,12 +60,8 @@ const UploadBook = () => {
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState('');
   const [manuscriptFile, setManuscriptFile] = useState(null);
-<<<<<<< HEAD
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-=======
-  const [coverError, setCoverError] = useState('');
->>>>>>> 273b03a4b41e73c7807645eb3aa301b82950f5bf
 
   useEffect(() => {
     const defaultAuthor = 'Alex Rivera';
@@ -222,7 +218,6 @@ const UploadBook = () => {
       return;
     }
 
-<<<<<<< HEAD
     setSubmitError('');
     setIsSubmitting(true);
     try {
@@ -231,24 +226,6 @@ const UploadBook = () => {
       payload.append('author', selectedAuthor?.name || authorQuery.trim());
       payload.append('category', genre.trim());
       payload.append('description', description.trim());
-=======
-    const bookId = Date.now();
-    const newBook = {
-      id: bookId,
-      title: title.trim(),
-      author: selectedAuthor?.name || authorQuery.trim(),
-      genre: genre.trim(),
-      description: description.trim(),
-      status: 'Published',
-      rating: 0,
-      reads: '0',
-      sales: '$0',
-      img: isValidCoverUrl(coverPreviewUrl) ? coverPreviewUrl : FALLBACK_COVER_URL,
-      manuscriptName: manuscriptFile?.name || '',
-      manuscriptType: manuscriptFile?.type || '',
-      manuscriptSizeBytes: manuscriptFile?.size || 0,
-    };
->>>>>>> 273b03a4b41e73c7807645eb3aa301b82950f5bf
 
       if (manuscriptFile instanceof File) {
         payload.append('book_file', manuscriptFile);
