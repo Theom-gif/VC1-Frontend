@@ -2,16 +2,20 @@ import { Eye, EyeOff, BookOpen, Mail, User as UserIcon, Shield, PenTool } from "
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
-import { getHomePathByRole } from "../roleUtils";
+import {
+  getHomePathByRole,
+  getRoleName,
+  USER_PORTAL_URL,
+} from "../roleUtils";
 
 const ROLE_OPTIONS = [
-  { label: "USER", roleId: "3", icon: UserIcon },
-  { label: "AUTHOR", roleId: "2", icon: PenTool },
-  { label: "ADMIN", roleId: "1", icon: Shield },
+  { label: "USER", role: "User", icon: UserIcon },
+  { label: "AUTHOR", role: "Author", icon: PenTool },
+  { label: "ADMIN", role: "Admin", icon: Shield },
 ];
 
 export default function Register() {
-  const { isAuthenticated, user, register } = useAuth();
+  const { isAuthenticated, isReady, user, register, login } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -21,10 +25,19 @@ export default function Register() {
     email: "",
     password: "",
     password_confirmation: "",
-    role_id: "3",
+    role: "User",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  if (!isReady) {
+    return null;
+  }
+
+  if (isAuthenticated && getRoleName(user?.role) === "User") {
+    window.location.replace(USER_PORTAL_URL);
+    return null;
+  }
 
   if (isAuthenticated) {
     return <Navigate to={getHomePathByRole(user?.role)} replace />;
@@ -58,6 +71,21 @@ export default function Register() {
     
     if (!result.ok) {
       setError(result.error);
+      return;
+    }
+
+    const loginResult = await login({
+      email: form.email,
+      password: form.password,
+      role: form.role,
+    });
+
+    if (loginResult.ok) {
+      if (getRoleName(loginResult.user?.role || form.role) === "User") {
+        window.location.replace(USER_PORTAL_URL);
+        return;
+      }
+      navigate(getHomePathByRole(loginResult.user?.role || form.role), { replace: true });
       return;
     }
 
@@ -135,12 +163,12 @@ export default function Register() {
             <div className="grid grid-cols-3 gap-3">
               {ROLE_OPTIONS.map((role) => {
                 const Icon = role.icon;
-                const isActive = form.role_id === role.roleId;
+                const isActive = form.role === role.role;
                 return (
                   <button
-                    key={role.roleId}
+                    key={role.role}
                     type="button"
-                    onClick={() => onChange("role_id", role.roleId)}
+                    onClick={() => onChange("role", role.role)}
                     className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-3 transition-all ${
                       isActive 
                         ? "border-[#4a868f] bg-[#1d3438] text-[#4a868f] shadow-[inset_0_0_10px_rgba(74,134,143,0.2)]" 

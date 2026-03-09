@@ -1,19 +1,38 @@
-import { Eye, EyeOff, BookOpen, ArrowRight, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, BookOpen, ArrowRight, Mail, Lock, User as UserIcon, PenTool, Shield } from "lucide-react";
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
-import { getHomePathByRole } from "../roleUtils";
+import {
+  getHomePathByRole,
+  getRoleName,
+  USER_PORTAL_URL,
+} from "../roleUtils";
+
+const ROLE_OPTIONS = [
+  { label: "User", icon: UserIcon },
+  { label: "Author", icon: PenTool },
+  { label: "Admin", icon: Shield },
+];
 
 export default function Login() {
-  const { isAuthenticated, user, login, loginDemo } = useAuth();
+  const { isAuthenticated, isReady, user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname;
 
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "", role: "User", remember: false });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isReady) {
+    return null;
+  }
+
+  if (isAuthenticated && getRoleName(user?.role) === "User") {
+    window.location.replace(USER_PORTAL_URL);
+    return null;
+  }
 
   if (isAuthenticated) {
     return <Navigate to={getHomePathByRole(user?.role)} replace />;
@@ -33,7 +52,23 @@ export default function Login() {
       setError(result.error);
       return;
     }
-    navigate(from || getHomePathByRole(result.user?.role), { replace: true });
+
+    if (getRoleName(result.user?.role) === "User") {
+      window.location.replace(USER_PORTAL_URL);
+      return;
+    }
+
+    const resolvedRole = getRoleName(result.user?.role);
+    const homePath = getHomePathByRole(resolvedRole);
+    const safeFrom =
+      typeof from === "string" &&
+      ((resolvedRole === "Admin" && from.startsWith("/admin")) ||
+        (resolvedRole === "Author" && from.startsWith("/author")) ||
+        (resolvedRole === "User" && from.startsWith("/user")))
+        ? from
+        : null;
+
+    navigate(safeFrom || homePath, { replace: true });
   };
 
   return (
@@ -123,8 +158,39 @@ export default function Login() {
               </div>
             </div>
 
+            <div>
+              <label className="mb-3 block text-sm font-medium text-[#94a3b8]">Role</label>
+              <div className="grid grid-cols-3 gap-2">
+                {ROLE_OPTIONS.map((roleOption) => {
+                  const Icon = roleOption.icon;
+                  const isActive = form.role === roleOption.label;
+                  return (
+                    <button
+                      key={roleOption.label}
+                      type="button"
+                      onClick={() => onChange("role", roleOption.label)}
+                      className={`flex items-center justify-center gap-2 rounded-xl border px-2 py-2 text-xs font-semibold transition-all ${
+                        isActive
+                          ? "border-[#4a868f] bg-[#1d3438] text-[#4a868f]"
+                          : "border-[rgba(255,255,255,0.08)] bg-[#1d3438]/60 text-[#94a3b8] hover:border-[#4a868f]/40"
+                      }`}
+                    >
+                      <Icon size={14} />
+                      {roleOption.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="remember" className="h-4 w-4 rounded border-[#1d3438] bg-[#1d3438] accent-[#4a868f]" />
+              <input
+                type="checkbox"
+                id="remember"
+                checked={form.remember}
+                onChange={(e) => onChange("remember", e.target.checked)}
+                className="h-4 w-4 rounded border-[#1d3438] bg-[#1d3438] accent-[#4a868f]"
+              />
               <label htmlFor="remember" className="text-sm text-[#94a3b8]">Remember me on this device</label>
             </div>
 

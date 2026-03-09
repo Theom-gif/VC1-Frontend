@@ -6,38 +6,111 @@ import { getRoleName } from "./roleUtils";
 
 const SESSION_KEY = "bookhub_session";
 const TOKEN_KEY = "bookhub_token";
+const REMEMBER_KEY = "bookhub_remember";
 
 const AuthContext = createContext(null);
 
-function getSession() {
-  const raw = localStorage.getItem(SESSION_KEY);
+function readSessionFromStorage(storage) {
+  const raw = storage.getItem(SESSION_KEY);
   if (!raw) {
     return null;
   }
   try {
     return JSON.parse(raw);
   } catch {
+    storage.removeItem(SESSION_KEY);
     return null;
   }
 }
 
-function saveSession(user) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+function getTokenFromStorage() {
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
 }
 
-function saveToken(token) {
+function setRememberPreference(remember) {
+  if (remember) {
+    localStorage.setItem(REMEMBER_KEY, "1");
+    return;
+  }
+  localStorage.removeItem(REMEMBER_KEY);
+}
+
+function getSession() {
+  return readSessionFromStorage(localStorage) || readSessionFromStorage(sessionStorage);
+}
+
+function saveSession(user, remember = false) {
+  const activeStorage = remember ? localStorage : sessionStorage;
+  const staleStorage = remember ? sessionStorage : localStorage;
+  activeStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  staleStorage.removeItem(SESSION_KEY);
+}
+
+function saveToken(token, remember = false) {
   if (!token) {
     return;
   }
-  localStorage.setItem(TOKEN_KEY, token);
+  const activeStorage = remember ? localStorage : sessionStorage;
+  const staleStorage = remember ? sessionStorage : localStorage;
+  activeStorage.setItem(TOKEN_KEY, token);
+  staleStorage.removeItem(TOKEN_KEY);
 }
 
 function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
 }
 
 function clearSession() {
   localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
+}
+
+function firstDefinedValue(values) {
+  return values.find((value) => String(value ?? "").trim() !== "");
+}
+
+function resolveSessionRole(backendUser, data, requestedRole) {
+  const backendRole = firstDefinedValue([
+    backendUser?.role_id,
+    backendUser?.roleId,
+    backendUser?.role,
+    backendUser?.role_name,
+    backendUser?.roleName,
+    backendUser?.user_role,
+    backendUser?.type,
+    data?.role_id,
+    data?.roleId,
+    data?.role,
+    data?.role_name,
+    data?.roleName,
+    data?.user_role,
+    data?.type,
+    requestedRole,
+  ]);
+  return getRoleName(backendRole);
+}
+
+function extractRoleNameFromAuthResponse(responseData) {
+  const data = responseData || {};
+  const backendUser = data.user || data.data?.user || data;
+  const backendRole = firstDefinedValue([
+    backendUser?.role_id,
+    backendUser?.roleId,
+    backendUser?.role,
+    backendUser?.role_name,
+    backendUser?.roleName,
+    backendUser?.user_role,
+    backendUser?.type,
+    data?.role_id,
+    data?.roleId,
+    data?.role,
+    data?.role_name,
+    data?.roleName,
+    data?.user_role,
+    data?.type,
+  ]);
+  return getRoleName(backendRole);
 }
 
 function toErrorMessage(error, fallbackMessage) {
@@ -45,6 +118,10 @@ function toErrorMessage(error, fallbackMessage) {
     return "Login request timed out. Please check backend/API speed and try again.";
   }
   if (!error?.response) {
+    const directMessage = String(error?.message || "").trim();
+    if (directMessage) {
+      return directMessage;
+    }
     return `Cannot reach backend at ${API_BASE_URL}. Check VITE_API_BASE_URL and backend status.`;
   }
   const message =
@@ -53,49 +130,219 @@ function toErrorMessage(error, fallbackMessage) {
     error?.message;
   const validationErrors = error?.response?.data?.errors;
   if (validationErrors && typeof validationErrors === "object") {
-    const firstField = Object.keys(validationErrors)[0];
-    const firstMessage = Array.isArray(validationErrors[firstField])
-      ? validationErrors[firstField][0]
-      : validationErrors[firstField];
-    if (firstMessage) {
-      return String(firstMessage);
+    const messages = Object.values(validationErrors)
+      .flatMap((entry) => (Array.isArray(entry) ? entry : [entry]))
+      .filter(Boolean)
+      .map((entry) => String(entry).trim())
+      .filter(Boolean);
+    if (messages.length > 0) {
+      return messages.slice(0, 3).join(" ");
     }
   }
   return message || fallbackMessage;
 }
 
+function getRoleWord(role) {
+  return getRoleName(role);
+}
+
+function getRoleAliases(role) {
+  const roleWord = getRoleWord(role);
+  if (roleWord === "Admin") {
+    return ["Admin", "admin", "Administrator", "administrator", "1"];
+  }
+  if (roleWord === "Author") {
+    return ["Author", "author", "Writer", "writer", "2"];
+  }
+  return ["User", "user", "Reader", "reader", "Member", "member", "3"];
+}
+
+function getRoleIdByWord(role) {
+  const roleWord = getRoleWord(role);
+  if (roleWord === "Admin") {
+    return 1;
+  }
+  if (roleWord === "Author") {
+    return 2;
+  }
+  return 3;
+}
+
+function getErrorMessageText(error) {
+  const validationErrors = error?.response?.data?.errors;
+  const roleErrors = validationErrors?.role || validationErrors?.role_id || validationErrors?.Role;
+  const roleErrorText = Array.isArray(roleErrors) ? roleErrors.join(" ") : roleErrors;
+  const message =
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    "";
+  return `${message} ${roleErrorText || ""}`.trim();
+}
+
+function isRoleValidationError(error) {
+  const status = Number(error?.response?.status || 0);
+  const text = getErrorMessageText(error).toLowerCase();
+  const isClientValidationStatus = status >= 400 && status < 500;
+  return (
+    isClientValidationStatus &&
+    (text.includes("role") ||
+      text.includes("user, author, or admin") ||
+      text.includes("selected role is invalid") ||
+      text.includes("role is required"))
+  );
+}
+
+async function loginWithRoleFallbacks({ email, password, role }) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const requestedRoleName = getRoleWord(role);
+  const roleId = getRoleIdByWord(requestedRoleName);
+  const roleAliases = getRoleAliases(requestedRoleName);
+  const requestModes = ["urlencoded", "multipart", "json"];
+
+  const attempts = [];
+  for (const alias of roleAliases) {
+    const numericAlias = Number(alias);
+    if (Number.isFinite(numericAlias) && numericAlias > 0) {
+      attempts.push({ email: cleanEmail, password, role_id: numericAlias });
+    } else {
+      attempts.push({ email: cleanEmail, password, role: alias, role_id: roleId });
+      attempts.push({ email: cleanEmail, password, role: alias });
+    }
+  }
+  attempts.push({ email: cleanEmail, password, role_id: roleId });
+  attempts.push({ email: cleanEmail, password });
+
+  let lastRoleError = null;
+  for (const payload of attempts) {
+    for (const mode of requestModes) {
+      try {
+        const response = await loginRequest(payload, { mode });
+        const responseRoleName = extractRoleNameFromAuthResponse(response?.data);
+
+        if (responseRoleName !== requestedRoleName) {
+          lastRoleError = new Error(
+            `This account logged in as ${responseRoleName}. Please choose ${responseRoleName} role to continue.`,
+          );
+          continue;
+        }
+
+        return response;
+      } catch (error) {
+        if (!isRoleValidationError(error)) {
+          throw error;
+        }
+        lastRoleError = error;
+      }
+    }
+  }
+
+  throw lastRoleError || new Error("Unable to authenticate with the selected role.");
+}
+
+async function registerWithRoleFallbacks({
+  firstname,
+  lastname,
+  email,
+  password,
+  password_confirmation,
+  role,
+  role_id,
+}) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const roleName = getRoleWord(role ?? role_id);
+  const roleId = getRoleIdByWord(roleName);
+  const roleAliases = getRoleAliases(roleName);
+
+  const basePayload = {
+    firstname,
+    lastname,
+    first_name: firstname,
+    last_name: lastname,
+    email: cleanEmail,
+    password,
+    password_confirmation,
+  };
+
+  const attempts = [];
+  for (const alias of roleAliases) {
+    const numericAlias = Number(alias);
+    if (Number.isFinite(numericAlias) && numericAlias > 0) {
+      attempts.push({ ...basePayload, role_id: numericAlias });
+    } else {
+      attempts.push({ ...basePayload, role: alias, role_id: roleId });
+      attempts.push({ ...basePayload, role: alias });
+    }
+  }
+  attempts.push({ ...basePayload, role_id: roleId });
+
+  const requestModes = ["urlencoded", "multipart", "json"];
+
+  let lastRoleError = null;
+  let lastSpecificRoleError = null;
+  for (const payload of attempts) {
+    for (const mode of requestModes) {
+      try {
+        return await registerRequest(payload, { mode });
+      } catch (error) {
+        if (!isRoleValidationError(error)) {
+          throw error;
+        }
+        lastRoleError = error;
+        const roleText = getErrorMessageText(error).toLowerCase();
+        if (!roleText.includes("required")) {
+          lastSpecificRoleError = error;
+        }
+      }
+    }
+  }
+
+  throw lastSpecificRoleError || lastRoleError;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    setUser(getSession());
+    const shouldRemember = localStorage.getItem(REMEMBER_KEY) === "1";
+    if (!shouldRemember) {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+    }
+
+    const storedSession = getSession();
+    const storedToken = getTokenFromStorage();
+
+    if (storedSession && !storedToken) {
+      clearSession();
+      clearToken();
+      setRememberPreference(false);
+      setUser(null);
+    } else {
+      setUser(storedSession);
+    }
+
+    setIsReady(true);
   }, []);
 
   const value = useMemo(
     () => ({
       user,
+      isReady,
       isAuthenticated: Boolean(user),
-      login: async ({ email, password }) => {
+      login: async ({ email, password, role, remember = false }) => {
         try {
-          const response = await loginRequest({
-            email: String(email || "").trim().toLowerCase(),
-            password,
-          });
+          const response = await loginWithRoleFallbacks({ email, password, role });
           const data = response?.data || {};
           const backendUser = data.user || data.data?.user || data;
-          const backendRole =
-            backendUser?.role_id ??
-            backendUser?.roleId ??
-            backendUser?.role ??
-            data?.role_id ??
-            data?.roleId ??
-            data?.role;
+          const resolvedRole = resolveSessionRole(backendUser, data, role);
 
           const sessionUser = {
             id: backendUser?.id || backendUser?._id || backendUser?.userId || `u_${Date.now()}`,
             name: backendUser?.name || backendUser?.fullName || backendUser?.username || "User",
             email: backendUser?.email || String(email || "").trim().toLowerCase(),
-            role: getRoleName(backendRole),
+            role: resolvedRole,
           };
 
           const token =
@@ -109,8 +356,9 @@ export function AuthProvider({ children }) {
           if (!token) {
             return { ok: false, error: "Login succeeded but no access token was returned by /api/auth/login." };
           }
-          saveSession(sessionUser);
-          saveToken(token);
+          saveSession(sessionUser, Boolean(remember));
+          saveToken(token, Boolean(remember));
+          setRememberPreference(Boolean(remember));
           setUser(sessionUser);
           return { ok: true, user: sessionUser };
         } catch (error) {
@@ -131,7 +379,9 @@ export function AuthProvider({ children }) {
           email: demoUser.email,
           role: getRoleName(demoUser.role),
         };
-        saveSession(sessionUser);
+        saveSession(sessionUser, false);
+        saveToken("demo-session-token", false);
+        setRememberPreference(false);
         setUser(sessionUser);
         return { ok: true, user: sessionUser };
       },
@@ -141,15 +391,17 @@ export function AuthProvider({ children }) {
         email,
         password,
         password_confirmation,
+        role,
         role_id,
       }) => {
         try {
-          await registerRequest({
+          await registerWithRoleFallbacks({
             firstname,
             lastname,
-            email: String(email || "").trim().toLowerCase(),
+            email,
             password,
             password_confirmation,
+            role,
             role_id,
           });
           return { ok: true };
@@ -160,10 +412,11 @@ export function AuthProvider({ children }) {
       logout: () => {
         clearSession();
         clearToken();
+        setRememberPreference(false);
         setUser(null);
       },
     }),
-    [user],
+    [isReady, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

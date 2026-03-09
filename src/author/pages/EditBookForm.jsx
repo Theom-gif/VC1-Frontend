@@ -52,8 +52,18 @@ export const EditBookForm = ({ book, onSave, onCancel, onDelete, isSaving = fals
       return;
     }
 
+<<<<<<< HEAD
     const objectUrl = URL.createObjectURL(file);
     setFormData((prev) => ({ ...prev, coverUrl: objectUrl, coverFile: file }));
+=======
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setFormData((prev) => ({ ...prev, coverUrl: reader.result }));
+      }
+    };
+    reader.readAsDataURL(file);
+>>>>>>> 273b03a4b41e73c7807645eb3aa301b82950f5bf
     event.target.value = '';
   };
 

@@ -7,6 +7,10 @@ const leaders = [
   { user: USERS[2], booksRead: 24 },
 ];
 
+const getDisplayName = (user) => `${user.first_name} ${user.last_name}`;
+const getAvatarUrl = (user) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(user))}&background=0f172a&color=ffffff`;
+
 const TopReaders = () => {
   return (
     <div className="space-y-8">
@@ -16,8 +20,8 @@ const TopReaders = () => {
             <div className="absolute -top-6 w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center border-4 border-bg-dark text-white font-bold text-xl">
               {idx + 1}
             </div>
-            <img src={entry.user.avatar} alt={entry.user.name} className="w-20 h-20 rounded-full object-cover mb-4 border-4 border-white/5" />
-            <h4 className="text-lg font-bold">{entry.user.name}</h4>
+            <img src={getAvatarUrl(entry.user)} alt={getDisplayName(entry.user)} className="w-20 h-20 rounded-full object-cover mb-4 border-4 border-white/5" />
+            <h4 className="text-lg font-bold">{getDisplayName(entry.user)}</h4>
             <p className="text-slate-500 text-sm mb-4">{entry.user.email}</p>
             <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl">
               <BookOpen size={16} className="text-purple-500" />
@@ -53,12 +57,12 @@ const TopReaders = () => {
                 <td className="px-6 py-4 font-bold text-slate-500">{idx + 1}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <img src={entry.user.avatar} alt={entry.user.name} className="w-10 h-10 rounded-full object-cover" />
-                    <span className="font-bold">{entry.user.name}</span>
+                    <img src={getAvatarUrl(entry.user)} alt={getDisplayName(entry.user)} className="w-10 h-10 rounded-full object-cover" />
+                    <span className="font-bold">{getDisplayName(entry.user)}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4 font-bold">{entry.booksRead}</td>
-                <td className="px-6 py-4 text-slate-400 text-sm">{entry.user.joined}</td>
+                <td className="px-6 py-4 text-slate-400 text-sm">{entry.user.created_at}</td>
                 <td className="px-6 py-4 text-right">
                   <span className="text-green-400 text-xs font-bold flex items-center justify-end gap-1">
                     <ArrowUpRight size={14} />+{idx + 2}
